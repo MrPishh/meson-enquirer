@@ -1,0 +1,24 @@
+# ---- secrets: never publish ------------------------------------------------
+# .env holds the bot token and server IDs. Every variant is ignored too
+# (.env.local, .env.bak, …); only the blank template is kept.
+.env
+.env.*
+!.env.example
+*.bak
+
+# Personal Claude Code settings (the shared .claude/settings.json IS kept —
+# it only registers the code-index hook, no secrets).
+.claude/settings.local.json
+
+# ---- dependencies and logs -------------------------------------------------
+node_modules/
+npm-debug.log*
+*.log
+logs/
+
+# ---- editor / OS clutter ---------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

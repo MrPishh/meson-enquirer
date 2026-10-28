@@ -1,0 +1,1118 @@
+{
+ "generatedAt": "2026-10-27T07:38:55.414Z",
+ "source": "https://explorer.meson.fi",
+ "chains": {
+  "0x003c": {
+   "id": "eth",
+   "name": "Ethereum",
+   "alias": "ETH",
+   "explorer": "https://etherscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "15": "PYUSD",
+    "35": "BUSD",
+    "48": "USD1",
+    "67": "M-BTC",
+    "69": "MERL",
+    "71": "STONE",
+    "75": "SolvBTC",
+    "81": "xSolvBTC",
+    "87": "PUMP",
+    "113": "pumpBTC",
+    "114": "uniBTC",
+    "116": "FBTC",
+    "242": "WBTC",
+    "255": "ETH"
+   }
+  },
+  "0x02ca": {
+   "id": "bnb",
+   "name": "BNB Smart Chain",
+   "alias": "BNB",
+   "explorer": "https://bscscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "33": "USDC",
+    "34": "BSC-USD",
+    "35": "BUSD",
+    "40": "FDUSD",
+    "48": "USD1",
+    "65": "iUSD",
+    "67": "M-BTC",
+    "69": "MERL",
+    "75": "SolvBTC",
+    "79": "uBTC",
+    "81": "xSolvBTC",
+    "85": "SolvBTC.JUP",
+    "87": "PUMP",
+    "89": "B2",
+    "113": "pumpBTC",
+    "124": "DUCK",
+    "194": "M",
+    "198": "TAKER",
+    "242": "BTCB",
+    "251": "BNB"
+   }
+  },
+  "0x03c6": {
+   "id": "polygon",
+   "name": "Polygon PoS",
+   "alias": "POL",
+   "explorer": "https://polygonscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT0",
+    "9": "USDC",
+    "239": "POL",
+    "242": "WBTC"
+   }
+  },
+  "0x11bc": {
+   "id": "evmos",
+   "name": "Evmos",
+   "alias": "evmos",
+   "explorer": "https://escan.live",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC"
+   }
+  },
+  "0x2329": {
+   "id": "arb",
+   "name": "Arbitrum",
+   "alias": "ARB",
+   "explorer": "https://arbiscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USD₮0",
+    "9": "USDC",
+    "65": "iUSD",
+    "75": "SolvBTC",
+    "81": "xSolvBTC",
+    "113": "pumpBTC",
+    "124": "DUCK",
+    "242": "WBTC",
+    "255": "ETH"
+   }
+  },
+  "0x0266": {
+   "id": "opt",
+   "name": "OP Mainnet",
+   "alias": "OPT",
+   "explorer": "https://optimistic.etherscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT",
+    "9": "USDC",
+    "10": "USD₮0",
+    "255": "ETH"
+   }
+  },
+  "0x0a0a": {
+   "id": "aurora",
+   "name": "Aurora",
+   "alias": "Aurora",
+   "explorer": "https://aurorascan.dev",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDTE",
+    "255": "ETH"
+   }
+  },
+  "0x01f7": {
+   "id": "cfx",
+   "name": "Conflux eSpace",
+   "alias": "CFX",
+   "explorer": "https://evm.confluxscan.net",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USDT0",
+    "32": "PoD",
+    "33": "USDC",
+    "34": "USDT",
+    "191": "CFX"
+   }
+  },
+  "0x2328": {
+   "id": "avax",
+   "name": "Avalanche",
+   "alias": "AVA",
+   "explorer": "https://snowtrace.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT.e",
+    "9": "USDC",
+    "10": "USDt",
+    "75": "SolvBTC",
+    "81": "xSolvBTC",
+    "113": "pumpBTC"
+   }
+  },
+  "0x03ef": {
+   "id": "ftm",
+   "name": "Fantom",
+   "alias": "FTM",
+   "explorer": "https://ftmscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "9": "USDC"
+   }
+  },
+  "0x00c3": {
+   "id": "tron",
+   "name": "Tron",
+   "alias": "TRX",
+   "explorer": "https://tronscan.org/#",
+   "addressFormat": "tron",
+   "tokens": {
+    "1": "USDCOLD",
+    "2": "USDT"
+   }
+  },
+  "0x03ff": {
+   "id": "one",
+   "name": "Harmony",
+   "alias": "ONE",
+   "explorer": "https://explorer.harmony.one",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "1USDC",
+    "2": "1USDT"
+   }
+  },
+  "0x0505": {
+   "id": "movr",
+   "name": "Moonriver",
+   "alias": "MOVR",
+   "explorer": "https://moonriver.moonscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC"
+   }
+  },
+  "0x0504": {
+   "id": "beam",
+   "name": "Moonbeam",
+   "alias": "GLMR",
+   "explorer": "https://moonbeam.moonscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "xcUSDT"
+   }
+  },
+  "0x00c2": {
+   "id": "eos",
+   "name": "EOS EVM",
+   "alias": "EOS",
+   "explorer": "https://explorer.evm.eosnetwork.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USDT",
+    "10": "USDT",
+    "191": "EOS"
+   }
+  },
+  "0x0000": {
+   "id": "bitcoin",
+   "name": "Bitcoin",
+   "alias": "bitcoin",
+   "explorer": "https://mempool.space",
+   "addressFormat": "bitcoin",
+   "tokens": {
+    "243": "BTC"
+   }
+  },
+  "0x01f5": {
+   "id": "solana",
+   "name": "Solana",
+   "alias": "SOL",
+   "explorer": "https://solscan.io",
+   "addressFormat": "solana",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "15": "PYUSD",
+    "16": "USD1",
+    "242": "xBTC",
+    "247": "SOL"
+   }
+  },
+  "0x2105": {
+   "id": "base",
+   "name": "Base",
+   "alias": "base",
+   "explorer": "https://basescan.org",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "4": "USDbC",
+    "113": "pumpBTC",
+    "115": "cbBTC",
+    "124": "DUCK",
+    "255": "ETH"
+   }
+  },
+  "0xe708": {
+   "id": "linea",
+   "name": "Linea",
+   "alias": "LINEA",
+   "explorer": "https://lineascan.build",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "41": "BBUSD",
+    "67": "M-BTC",
+    "73": "SolvBTC.m",
+    "75": "SolvBTC.b",
+    "241": "BBTC",
+    "255": "ETH"
+   }
+  },
+  "0x0324": {
+   "id": "zksync",
+   "name": "zkSync Era",
+   "alias": "ZKS",
+   "explorer": "https://explorer.zksync.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT",
+    "9": "USDC",
+    "67": "M-BTC",
+    "255": "ETH"
+   }
+  },
+  "0x1331": {
+   "id": "blast",
+   "name": "Blast",
+   "alias": "BLAST",
+   "explorer": "https://blastscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "39": "USDB",
+    "65": "iUSD",
+    "255": "ETH"
+   }
+  },
+  "0x0263": {
+   "id": "manta",
+   "name": "Manta",
+   "alias": "MANTA",
+   "explorer": "https://pacific-explorer.manta.network/",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "65": "iUSD",
+    "71": "STONE",
+    "254": "BETH",
+    "255": "ETH"
+   }
+  },
+  "0x868b": {
+   "id": "mode",
+   "name": "Mode",
+   "alias": "MODE",
+   "explorer": "https://explorer.mode.network",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "41": "BBUSD",
+    "67": "M-BTC",
+    "75": "SolvBTC",
+    "114": "uniBTC",
+    "242": "WBTC",
+    "255": "ETH"
+   }
+  },
+  "0xaaaa": {
+   "id": "ancient8",
+   "name": "Ancient8",
+   "alias": "A8",
+   "explorer": "https://scan.ancient8.gg",
+   "addressFormat": "ethers",
+   "tokens": {
+    "255": "ETH"
+   }
+  },
+  "0x5cc4": {
+   "id": "zklink",
+   "name": "zkLink Nova",
+   "alias": "ZKLINK",
+   "explorer": "https://explorer.zklink.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "41": "BBUSD",
+    "67": "M-BTC",
+    "73": "SolvBTC.m",
+    "75": "SolvBTC.b",
+    "113": "pumpBTC",
+    "241": "BBTC",
+    "255": "ETH"
+   }
+  },
+  "0x1388": {
+   "id": "mnt",
+   "name": "Mantle",
+   "alias": "MNT",
+   "explorer": "https://explorer.mantle.xyz",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "10": "USDT0",
+    "113": "pumpBTC",
+    "242": "WBTC"
+   }
+  },
+  "0x2750": {
+   "id": "scroll",
+   "name": "Scroll",
+   "alias": "SCROLL",
+   "explorer": "https://blockscout.scroll.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "67": "M-BTC",
+    "73": "SolvBTC.m",
+    "75": "SolvBTC.b",
+    "255": "ETH"
+   }
+  },
+  "0x00c4": {
+   "id": "xlayer",
+   "name": "XLayer",
+   "alias": "XLAYER",
+   "explorer": "https://www.okx.com/explorer/xlayer",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT",
+    "9": "USDC",
+    "10": "USD₮0",
+    "191": "OKB",
+    "242": "WBTC",
+    "254": "WETH"
+   }
+  },
+  "0x28c5": {
+   "id": "taiko",
+   "name": "Taiko",
+   "alias": "TAIKO",
+   "explorer": "https://taikoscan.network",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "67": "M-BTC",
+    "75": "SolvBTC",
+    "81": "xSolvBTC",
+    "113": "pumpBTC",
+    "242": "WBTC",
+    "255": "ETH"
+   }
+  },
+  "0x044d": {
+   "id": "zkevm",
+   "name": "Polygon zkEVM",
+   "alias": "ZKEVM",
+   "explorer": "https://zkevm.polygonscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "9": "USDC.E",
+    "255": "ETH"
+   }
+  },
+  "0x00cc": {
+   "id": "opbnb",
+   "name": "opBNB",
+   "alias": "opbnb",
+   "explorer": "https://opbnbscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "34": "USDT",
+    "251": "BNB"
+   }
+  },
+  "0x0092": {
+   "id": "sonic",
+   "name": "Sonic",
+   "alias": "SONIC",
+   "explorer": "https://sonicscan.org",
+   "addressFormat": "ethers",
+   "tokens": {
+    "9": "USDC",
+    "191": "S"
+   }
+  },
+  "0x018a": {
+   "id": "cronos",
+   "name": "Cronos",
+   "alias": "CRO",
+   "explorer": "https://cronoscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT"
+   }
+  },
+  "0x0440": {
+   "id": "metis",
+   "name": "Metis",
+   "alias": "metis",
+   "explorer": "https://andromeda-explorer.metis.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "m.USDC",
+    "2": "m.USDT"
+   }
+  },
+  "0x08ae": {
+   "id": "kava",
+   "name": "Kava",
+   "alias": "kava",
+   "explorer": "https://kavascan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USDT",
+    "67": "M-BTC"
+   }
+  },
+  "0x00ff": {
+   "id": "kroma",
+   "name": "Kroma",
+   "alias": "kroma",
+   "explorer": "https://blockscout.kroma.network",
+   "addressFormat": "ethers",
+   "tokens": {
+    "67": "M-BTC",
+    "255": "ETH"
+   }
+  },
+  "0x2019": {
+   "id": "kaia",
+   "name": "Kaia",
+   "alias": "kaia",
+   "explorer": "https://kaiascope.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "67": "M-BTC"
+   }
+  },
+  "0xf27d": {
+   "id": "aptos",
+   "name": "Aptos",
+   "alias": "APT",
+   "explorer": "https://explorer.aptoslabs.com",
+   "addressFormat": "aptos",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDt",
+    "242": "xBTC"
+   }
+  },
+  "0x027d": {
+   "id": "aptos0",
+   "name": "Aptos",
+   "alias": "APT",
+   "explorer": "https://explorer.aptoslabs.com",
+   "addressFormat": "aptos",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT"
+   }
+  },
+  "0x0310": {
+   "id": "sui",
+   "name": "Sui",
+   "alias": "SUI",
+   "explorer": "https://suivision.xyz",
+   "addressFormat": "sui",
+   "tokens": {
+    "1": "wUSDC",
+    "2": "wUSDT",
+    "9": "USDC",
+    "10": "suiUSDT",
+    "242": "xBTC"
+   }
+  },
+  "0x232c": {
+   "id": "starknet",
+   "name": "Starknet",
+   "alias": "STRK",
+   "explorer": "https://voyager.online",
+   "addressFormat": "starknet",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT",
+    "9": "USDC",
+    "242": "WBTC",
+    "254": "ETH"
+   }
+  },
+  "0x9296": {
+   "id": "skale-europa",
+   "name": "SKALE Europa",
+   "alias": "SKALE",
+   "explorer": "https://elated-tan-skat.explorer.mainnet.skalenodes.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "242": "WBTC",
+    "254": "ETHC"
+   }
+  },
+  "0xb4b1": {
+   "id": "skale-nebula",
+   "name": "SKALE Nebula",
+   "alias": "SKALE",
+   "explorer": "https://green-giddy-denebola.explorer.mainnet.skalenodes.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "242": "WBTC",
+    "254": "ETH"
+   }
+  },
+  "0x6c62": {
+   "id": "skale-calypso",
+   "name": "SKALE Calypso",
+   "alias": "SKALE",
+   "explorer": "https://honorable-steel-rasalhague.explorer.mainnet.skalenodes.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "242": "WBTC",
+    "254": "ETH"
+   }
+  },
+  "0x56ce": {
+   "id": "naut",
+   "name": "Nautilus",
+   "alias": "NAUT",
+   "explorer": "https://nautscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "33": "USDC",
+    "34": "USDT",
+    "191": "ZBC"
+   }
+  },
+  "0xce10": {
+   "id": "celo",
+   "name": "Celo",
+   "alias": "CELO",
+   "explorer": "https://celoscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "37": "cUSD"
+   }
+  },
+  "0x02bc": {
+   "id": "gnosis",
+   "name": "Gnosis",
+   "alias": "XDAI",
+   "explorer": "https://gnosisscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "52": "XDAI"
+   }
+  },
+  "0xa70e": {
+   "id": "zkfair",
+   "name": "ZKFair",
+   "alias": "ZKFAIR",
+   "explorer": "https://scan.zkfair.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "49": "USDC",
+    "254": "ETH"
+   }
+  },
+  "0x58f8": {
+   "id": "map",
+   "name": "MAP Protocol",
+   "alias": "MAP",
+   "explorer": "https://maposcan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "254": "ETH"
+   }
+  },
+  "0x045c": {
+   "id": "core",
+   "name": "Core",
+   "alias": "CORE",
+   "explorer": "https://scan.coredao.org",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "73": "SolvBTC.m",
+    "75": "SolvBTC.b",
+    "79": "uBTC",
+    "113": "pumpBTC",
+    "242": "COREBTC",
+    "254": "WETH"
+   }
+  },
+  "0x1b58": {
+   "id": "zeta",
+   "name": "ZetaChain",
+   "alias": "ZETA",
+   "explorer": "https://zetachain.blockscout.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "113": "pumpBTC",
+    "242": "BTC.BTC",
+    "254": "ETH.ETH"
+   }
+  },
+  "0x09dd": {
+   "id": "inevm",
+   "name": "inEVM",
+   "alias": "inevm",
+   "explorer": "https://explorer.inevm.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "191": "INJ"
+   }
+  },
+  "0xed88": {
+   "id": "bob",
+   "name": "BOB",
+   "alias": "BOB",
+   "explorer": "https://explorer.gobob.xyz",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT",
+    "10": "oUSDT",
+    "75": "SolvBTC",
+    "81": "xSolvBTC",
+    "113": "pumpBTC",
+    "242": "WBTC",
+    "255": "ETH"
+   }
+  },
+  "0x1771": {
+   "id": "bb",
+   "name": "BounceBit",
+   "alias": "BB",
+   "explorer": "https://bbscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "41": "BBUSD",
+    "191": "BB",
+    "242": "BBTC"
+   }
+  },
+  "0x10c5": {
+   "id": "bitlayer",
+   "name": "Bitlayer",
+   "alias": "BITLAYER",
+   "explorer": "https://www.btrscan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT",
+    "9": "USDC",
+    "67": "M-BTC",
+    "71": "BIT-STONE",
+    "73": "SolvBTC.m",
+    "243": "BTC",
+    "254": "ETH"
+   }
+  },
+  "0x038f": {
+   "id": "taproot",
+   "name": "Taproot",
+   "alias": "TR",
+   "explorer": "https://scan.taprootchain.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "243": "BTC"
+   }
+  },
+  "0x05dd": {
+   "id": "bevm",
+   "name": "BEVM Canary",
+   "alias": "BEVM",
+   "explorer": "https://scan-canary.bevm.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "243": "BTC"
+   }
+  },
+  "0x2ced": {
+   "id": "bevm2",
+   "name": "GEB Mainnet",
+   "alias": "GEB",
+   "explorer": "https://scan-mainnet.bevm.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "BUSDC",
+    "2": "BUSDT",
+    "71": "BEV-STONE",
+    "243": "BTC"
+   }
+  },
+  "0x0a59": {
+   "id": "ailayer",
+   "name": "AILayer",
+   "alias": "AI",
+   "explorer": "https://mainnet-explorer.ailayer.xyz",
+   "addressFormat": "ethers",
+   "tokens": {
+    "33": "USDC",
+    "34": "USDT",
+    "243": "BTC"
+   }
+  },
+  "0xbf04": {
+   "id": "zircuit",
+   "name": "Zircuit",
+   "alias": "ZIRCUIT",
+   "explorer": "https://explorer.zircuit.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "113": "pumpBTC",
+    "255": "ETH"
+   }
+  },
+  "0x1251": {
+   "id": "iotex",
+   "name": "IoTeX",
+   "alias": "IOTEX",
+   "explorer": "https://iotexscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "ioUSDT",
+    "67": "M-BTC",
+    "254": "ioETH"
+   }
+  },
+  "0x0135": {
+   "id": "ckb",
+   "name": "CKB",
+   "alias": "CKB",
+   "explorer": "https://explorer.nervos.org",
+   "addressFormat": "ckb",
+   "tokens": {
+    "242": "ccBTC"
+   }
+  },
+  "0x0531": {
+   "id": "sei",
+   "name": "Sei",
+   "alias": "SEI",
+   "explorer": "https://seitrace.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.n",
+    "2": "USD₮0",
+    "9": "USDC",
+    "67": "M-BTC",
+    "75": "SolvBTC",
+    "79": "uBTC"
+   }
+  },
+  "0x15a9": {
+   "id": "duck",
+   "name": "DuckChain",
+   "alias": "DUCK",
+   "explorer": "https://scan.duckchain.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "34": "USDT",
+    "67": "M-BTC",
+    "124": "DUCK"
+   }
+  },
+  "0xba93": {
+   "id": "neox",
+   "name": "Neo X",
+   "alias": "NEOX",
+   "explorer": "https://xexplorer.neo.org",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "241": "BTCB",
+    "254": "ETH"
+   }
+  },
+  "0xa867": {
+   "id": "hemi",
+   "name": "Hemi",
+   "alias": "HEMI",
+   "explorer": "https://explorer.hemi.xyz",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USDT",
+    "67": "M-BTC",
+    "113": "pumpBTC",
+    "114": "uniBTC",
+    "242": "hemiBTC",
+    "255": "ETH"
+   }
+  },
+  "0x0b02": {
+   "id": "morph",
+   "name": "Morph",
+   "alias": "MORPH",
+   "explorer": "https://explorer.morphl2.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "10": "USDT0",
+    "255": "ETH"
+   }
+  },
+  "0x1c20": {
+   "id": "exsat",
+   "name": "exSat",
+   "alias": "EXSAT",
+   "explorer": "https://scan.exsat.network",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "243": "BTC"
+   }
+  },
+  "0x6f40": {
+   "id": "corn",
+   "name": "Corn",
+   "alias": "CORN",
+   "explorer": "https://cornscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USD₮0",
+    "113": "pumpBTC",
+    "243": "BTCN"
+   }
+  },
+  "0x046f": {
+   "id": "lisk",
+   "name": "Lisk",
+   "alias": "LISK",
+   "explorer": "https://blockscout.lisk.com",
+   "addressFormat": "ethers",
+   "tokens": {}
+  },
+  "0x0465": {
+   "id": "taker",
+   "name": "Taker",
+   "alias": "TAKER",
+   "explorer": "https://explorer.taker.xyz",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "114": "uniBTC",
+    "115": "cbBTC",
+    "199": "TAKER",
+    "241": "BTCB",
+    "254": "ETH"
+   }
+  },
+  "0x006c": {
+   "id": "thunder",
+   "name": "ThunderCore",
+   "alias": "THUNDER",
+   "explorer": "https://explorer-mainnet.thundercore.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "TT-USDC",
+    "2": "TT-USDT"
+   }
+  },
+  "0x001e": {
+   "id": "rsk",
+   "name": "Rootstock",
+   "alias": "RSK",
+   "explorer": "https://rootstock.blockscout.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "114": "uniBTC",
+    "243": "RBTC"
+   }
+  },
+  "0x38de": {
+   "id": "bera",
+   "name": "Berachain",
+   "alias": "BERA",
+   "explorer": "https://berascan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "2": "USD₮0"
+   }
+  },
+  "0x03ee": {
+   "id": "hash",
+   "name": "Hashkey Chain",
+   "alias": "HASH",
+   "explorer": "https://hashkey.blockscout.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USDT"
+   }
+  },
+  "0x074c": {
+   "id": "soneium",
+   "name": "Soneium",
+   "alias": "SONEIUM",
+   "explorer": "https://www.okx.com/web3/explorer/soneium",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "85": "SolvBTC.JUP",
+    "255": "ETH"
+   }
+  },
+  "0x1100": {
+   "id": "memecore",
+   "name": "MemeCore",
+   "alias": "SONEIUM",
+   "explorer": "https://memecorescan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC.e",
+    "195": "M"
+   }
+  },
+  "0x8232": {
+   "id": "plume",
+   "name": "Plume",
+   "alias": "PLUME",
+   "explorer": "https://explorer.plume.org",
+   "addressFormat": "ethers",
+   "tokens": {
+    "7": "pUSD",
+    "116": "FBTC"
+   }
+  },
+  "0x0082": {
+   "id": "uni",
+   "name": "UniChain",
+   "alias": "UNI",
+   "explorer": "https://uniscan.xyz",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USD₮0",
+    "255": "ETH"
+   }
+  },
+  "0x03e7": {
+   "id": "hype",
+   "name": "HyperEVM",
+   "alias": "HYPE",
+   "explorer": "https://hyperevmscan.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USD₮0",
+    "191": "HYPE"
+   }
+  },
+  "0x2611": {
+   "id": "plasma",
+   "name": "Plasma",
+   "alias": "XPL",
+   "explorer": "https://plasmascan.to",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USDT0",
+    "191": "XPL"
+   }
+  },
+  "0xdef1": {
+   "id": "ink",
+   "name": "Ink",
+   "alias": "INK",
+   "explorer": "https://explorer.inkonchain.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USD₮0",
+    "255": "ETH"
+   }
+  },
+  "0x000e": {
+   "id": "flare",
+   "name": "Flare",
+   "alias": "FLR",
+   "explorer": "https://flarescan.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USD₮0"
+   }
+  },
+  "0x008f": {
+   "id": "monad",
+   "name": "Monad",
+   "alias": "MON",
+   "explorer": "https://monadvision.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT0"
+   }
+  },
+  "0x03dc": {
+   "id": "stable",
+   "name": "Stable",
+   "alias": "STABLE",
+   "explorer": "https://stablescan.xyz",
+   "addressFormat": "ethers",
+   "tokens": {
+    "2": "USDT0",
+    "191": "gUSDT"
+   }
+  },
+  "0x1237": {
+   "id": "hood",
+   "name": "Robinhood",
+   "alias": "HOOD",
+   "explorer": "https://robinhoodchain.blockscout.com",
+   "addressFormat": "ethers",
+   "tokens": {
+    "14": "USDG",
+    "255": "ETH"
+   }
+  },
+  "0x025f": {
+   "id": "ton",
+   "name": "Ton",
+   "alias": "TON",
+   "explorer": "https://tonviewer.com",
+   "addressFormat": "ton",
+   "tokens": {
+    "2": "USD₮"
+   }
+  }
+ }
+}

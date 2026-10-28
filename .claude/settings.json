@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/index-hook.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Updating code index"
+          }
+        ]
+      }
+    ]
+  }
+}
