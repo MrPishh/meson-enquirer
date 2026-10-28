@@ -4,6 +4,16 @@ Meson Enquirer — Discord bot for a Meson support server.
 A user opens a Ticket Tool ticket and puts a swap ID / transaction hash / explorer link (or just a wallet address) in the form; the bot looks it up on Meson, posts the details into the ticket and follows the swap until it completes.
 Anyone can look up a swap with `/meson-query` inside the support ticket categories (who may use it is restricted in Discord's Integrations settings, not in code).
 
+## Architecture overview
+
+1. **In:** Discord delivers ticket messages (Ticket Tool's form, the user's own messages) and `/meson-query`; `src/index.js` wires these events and, at startup, starts recovery and the explorer check.
+2. **Tickets** (`tickets.js`): find swap-shaped values in the text (`extract.js`), look them up (`meson.js`), post the details embed (`render.js`).
+3. **Following** (`watch.js`): one shared check round re-checks every open swap, in batches; it edits the embed and posts ⏳ / ✅ / ↩️.
+4. **Memory** (`ticket-state.js`) lives in memory only; after a restart, **recovery** (`recover.js`) rebuilds it from the bot's own Discord messages.
+5. **Meson side** (`meson.js`): the explorer API (search, swap, batch, address) and `rpcs.meson.fi` for the network notice; `decode.js` unpacks the encoded swap, `presets.js` names chains and tokens, `explorer-check.js` watches the explorer's status logic.
+
+External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` — all public, no API key. Meson's terms (swap, LP, released, encoded swap…) are explained in [CONTEXT.md § Glossary](CONTEXT.md#glossary).
+
 ## How to navigate — read this first
 
 1. **Find the area** in the [Quick reference](#quick-reference) below (file map, task map, flows, statuses). That is usually enough to know which file and function to open.
@@ -28,10 +38,10 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
   The builder reads every file as text and never imports a project module, so it needs no `.env`, cannot start anything, and writes nothing at all if any file fails to parse.
   When editing by hand in an editor, keep `npm run index:watch` running — it rebuilds on every save.
   `npm run index` rebuilds once; `npm run index -- --check` changes nothing and exits 1 if anything is stale or a doc-drift error is found.
-- **The hand-written docs are checked too** (`scripts/doc-checks.mjs`, part of every index run): the file map lists exactly the files in `src/` and `scripts/`; each "Where to look for…" row names functions that are defined in the files that row names; every backticked code name in `CLAUDE.md` / `README.md` exists; settings match across `src/config.js`, `.env.example`, `.env` and README § Settings; slash commands match their table; every npm script is documented and every documented one exists; no hand-written line numbers (point to a heading or name — `CODE_INDEX.md` has the lines); links and #anchors resolve; no unused imports or private definitions.
+- **The hand-written docs are checked too** (`scripts/doc-checks.mjs`, part of every index run; its header lists every check). In short: file map, "Where to look for…" rows, code names, settings in all four places, slash commands, npm scripts and links must match the code; no hand-written line numbers (point to a heading or name); no unused code.
   Warnings (not failures): a definition without a purpose comment or outside any section, an export no other file uses.
   **When Claude finishes a turn that changed files, the Stop hook runs `--check` and, on drift, sends Claude back once to fix it** — so a change is only finished when its docs are. A turn that changed nothing is never held up.
-- **Purpose text** in `CODE_INDEX.md` is the first sentence of the comment directly above each definition — keep those comments accurate.
+- **Purpose text** in `CODE_INDEX.md` is the first sentence of the comment directly above each definition (one blank line between them is fine) — keep those comments accurate.
 
 ## Quick reference
 
@@ -85,10 +95,19 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 | Change the transaction hashes list (step order, names, what is hidden) | `STEP_ORDER`, `txSteps`, `txValue` in `src/render.js` |
 | Change what happens after a restart | `recoverTicket` in `src/recover.js`; the readers `readSwapEmbed`, `readWalletEmbed`, `followUpKind` in `src/render.js` (keep them in step with the message builders) |
 | Change serial numbers / "ticket will be closed soon" | `serialOf`, `outcomeOpts` in `src/ticket-state.js`; re-rendering earlier ⏳ / closing messages: `syncFollowUps` in `src/watch.js` |
-| Add or change a slash command | `COMMANDS` + `onInteraction` + a `handle<Name>` function in `src/commands.js`, then `npm run register` |
-| Add a setting | `src/config.js` (section `Settings`) + `.env.example` + `.env` + README § Settings — every setting must be in `.env`; there are no defaults in code |
 | Change the navigation index or what the doc checks enforce | `withToc`, `withMdToc`, `buildCodeIndex` in `scripts/build-index.mjs`; `checkDocs` in `scripts/doc-checks.mjs`; the Stop hook in `scripts/stop-hook.mjs` |
 | Unknown chain / `token#NN` showing | `npm run refresh-presets` (not a code change) |
+
+### When you add…
+
+| Adding | Also do |
+| --- | --- |
+| A file in `src/` or `scripts/` | A row in the file map above; section headers; a purpose comment above each definition |
+| A setting | `src/config.js` (section `Settings`) + `.env.example` + `.env` + README § Settings — every setting must be in `.env`; there are no defaults in code |
+| A slash command | `COMMANDS` + `onInteraction` + a `handle<Name>` function in `src/commands.js`; a row in § Slash commands; then `npm run register` |
+| A message the bot posts | Its builder in `src/render.js`; if a restart must recognise it, a reader in `render.js` § Recognising our own messages |
+| A root doc | Nothing — a doc of 150+ lines gets its section list automatically (CLAUDE.md never does: it is always read whole) |
+| A change in behaviour | A description review (see "Descriptions must stay true" below) |
 
 ### Ticket flow (what happens to one message)
 
@@ -100,7 +119,7 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
    Meson-specific before chain-level, and a link (which says what it is) before a bare value.
    `lookupSwap` sends every one through Meson's search, which resolves them all the same way — so the order decides only which is tried first, never what is found.
    (A "swap ID before hash" two-pass lookup was tried and removed: it changed nothing.) Values already known to the ticket are skipped without a lookup; each new swap found is posted (`postSwap`); one already shown is ignored.
-3. **5 · Wallet fallback** (`postWalletSwaps`) — only if nothing swap-shaped resolved *and* the ticket shows no swap yet, once per address.
+3. **Wallet fallback** (`postWalletSwaps`, lookup priority 5 — after the four above) — only if nothing swap-shaped resolved *and* the ticket shows no swap yet, once per address.
    Lists the wallet's swaps that are not finished (Done, Released or Cancelled).
    If the user's pasted ID was not found, the wallet embed says so (no separate ❓).
 4. **❓ "couldn't find"** — only for the user's own message (never the form, which is full of Discord IDs), only if nothing in it resolved and the wallet fallback did not run (or ran and Meson rejected the address).
@@ -168,14 +187,11 @@ There is no test suite.
 
 - **Amounts are `BigInt` in 6-decimal units**, for every token including BTC. Never convert to `Number` — format with `formatAmount` (`src/decode.js`).
 - **Upstream reports "not found" as HTTP 400 *or* 404 with an `error` body.** `getJson` checks the body, not the status code.
-- **Meson's host has hiccups: it can briefly return an HTML error page, even with HTTP 200, on a correct API path.** This happened in production (a ticket went unanswered).
-  `getJson` therefore retries network errors, 429, 5xx *and* non-JSON bodies (`MESON_RETRIES`, waiting about 1s, 2s, 4s), and `queueMessage` (and restart recovery) retries a whole ticket message **until it works** if Meson still errors — waiting `TICKET_RETRY_SECONDS`, doubling up to `TICKET_RETRY_MAX_SECONDS` (`retryDelay`); it stops only when the ticket is gone or Discord refused the bot's request (4xx, e.g. Missing Permissions) — `worthRetrying`.
-  Never add a give-up limit: a ticket must always be answered, however late. The same goes for `watchSwap`: a failed re-check never ends a watch.
-  Swaps are always re-checked in batches (`getSwaps`, also in restart recovery), never one request per swap — keep it that way.
-  The batch is the primary path. It is undocumented, so `getSwaps` looks up on its own any swap the batch failed to deliver (left out, or the batch request failed — e.g. an HTML 404 if the route is removed). If those single lookups find swaps, the batch has stopped working: it is skipped for an hour (`BATCH_PAUSE_MS`, logged), then tried again — so it is back as soon as Meson restores it. A real outage fails the single lookups too, so it never pauses the batch.
-  Every repeated wait goes through `jitter` (`src/meson.js`, `JITTER_PERCENT`) so requests never come at a fixed beat — use it for any new timer that calls Meson.
-  Only "not found" is final.
-  Don't make non-JSON "fatal" again.
+- **Meson's host has hiccups** — it can briefly return an HTML error page, even with HTTP 200, on a correct API path (in production this left a ticket unanswered). So:
+  - **Quick retries:** `getJson` retries network errors, 429, 5xx *and* non-JSON bodies (`MESON_RETRIES`, waiting about 1s, 2s, 4s). Only "not found" is final — don't make non-JSON "fatal" again.
+  - **Never give up on a ticket:** `queueMessage` (and restart recovery) retries a whole ticket message until it works — `TICKET_RETRY_SECONDS`, doubling up to `TICKET_RETRY_MAX_SECONDS` (`retryDelay`) — and stops only when the ticket is gone or Discord refused the bot (4xx, e.g. Missing Permissions; `worthRetrying`). Don't add a give-up limit. A failed re-check never ends a watch either.
+  - **Batches:** swaps are always re-checked in batches (`getSwaps`, also in recovery), never one request per swap. The batch form is undocumented, so anything it fails to deliver is looked up on its own; if those single lookups find swaps, the batch is skipped for an hour (`BATCH_PAUSE_MS`, logged) and then tried again. A real outage fails both, so it never pauses the batch.
+  - **Random spacing:** every repeated wait goes through `jitter` (`src/meson.js`, `JITTER_PERCENT`) — use it for any new timer that calls Meson.
 - **An unknown or malformed wallet address is not an error** — the address endpoint returns an empty list (HTTP 200).
 - **`src/presets.json` is generated.** Fix the extractor, not the JSON. It must keep "later definitions win" (see `CONTEXT.md`) or tokens get mislabelled on re-indexed chains.
 - **Solana wallets vs signatures.** Wallet addresses are base58, 32–44 chars; transaction signatures 86–88.
@@ -193,6 +209,7 @@ There is no test suite.
 - **The address endpoint has no total count and `size` ≤ 20.** `list.length === size` is the only "maybe more" signal; it has no status or date filter (checked — `failed=true` is accepted but only filters for Meson's admins), so filtering is done locally and bounded by `ADDRESS_LOOKBACK_DAYS` / `ADDRESS_MAX_PAGES`.
 - **The ⚠️ network notice is only a hint.** `fetchChainHealth` swallows every error (logged) and returns "no known problems"; a health failure must never fail or delay a swap lookup. One cached request (`CHAIN_HEALTH_CACHE_SECONDS`) serves every lookup.
 - **Releasing never becomes Expired** (the explorer checks EXECUTED before the deadline), so a stuck release is ended only by `SWAP_WATCH_MAX_HOURS` — keep it generous.
+- **Descriptions must stay true.** The checks above prove that docs *point* to real things, not that they *say* the right thing. After any change in behaviour, review every description of it (docs, comments, user-facing text) and record the review in `.claude/last-description-review` — the next review starts from the commit that last changed that file.
 - **Never publish secrets.** `.env` (bot token, server/channel/role IDs) and every `.env.*` variant except `.env.example` are git-ignored — keep it that way, keep the token and every ID out of `.env.example` (only non-secret values like `AUTO_SCAN_MESSAGES=6`), and never paste real IDs or tokens into code or docs.
   Throwaway test scripts go in a temp folder, not the project.
 - **All state is in memory** (`ticket-state.js`, `watch.js`), and **Discord is the backup**: on startup `recover.js` reads every ticket channel, rebuilds each ticket from the bot's own messages (details embeds in posting order = `#n`; ⏳ / ✅ / ↩️ by the embed they reply to; wallet embeds), resumes every unfinished swap (`watchSwap` `resumed` — no second ⏳; a swap that finished while down gets its closing message) and handles messages posted after the bot's last one as if new. Live messages wait in the ticket queue until its recovery is done.

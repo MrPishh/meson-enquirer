@@ -32,7 +32,7 @@
 | `src/ticket-state.js` | 83 | State (33) · Helpers (61) | Per-ticket memory. |
 | `src/tickets.js` | 193 | Entry point (30) · Message handling (93) · Posting (145) | Ticket auto-reply: reads Ticket Tool's form embed and the user's later messages, and posts each new swap they name (then hands it to watchSwap). |
 | `src/watch.js` | 232 | Polling (39) · Watch lifecycle (162) | Keeps a posted swap current until it finishes. |
-| `scripts/build-index.mjs` | 418 | Parsing (60) · Contents block (141) · Markdown Contents block (177) · CODE_INDEX.md (218) · Main (336) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, the heading Contents block of every long doc (README.md… |
+| `scripts/build-index.mjs` | 424 | Parsing (61) · Contents block (148) · Markdown Contents block (181) · CODE_INDEX.md (222) · Main (340) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, the heading Contents block of every long doc (README.md… |
 | `scripts/check-explorer.mjs` | 22 | — | `npm run check-explorer` — check from the terminal whether the Meson explorer's status function still matches our port (`explorerStatus` in src/meson.js), th… |
 | `scripts/doc-checks.mjs` | 277 | Reading the docs (32) · Checks (113) | Doc-drift checks run by `npm run index` (scripts/build-index.mjs): the hand-written docs must point to things that exist, in the places they say. |
 | `scripts/index-hook.mjs` | 23 | — | Claude Code PostToolUse hook (.claude/settings.json): after an Edit/Write to a .js/.mjs file under src/ or scripts/, or to a doc in the project root, rebuild… |
@@ -259,20 +259,20 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `sectionAt` | Parsing | `scripts/build-index.mjs:65` | The section name if a boxed section header (bar, `//   Name`, bar) starts at line `i`, else null. |
-| `purposeAbove` | Parsing | `scripts/build-index.mjs:71` | First sentence of the comment block ending right above line `i`. |
-| `stripToc` | Parsing | `scripts/build-index.mjs:96` | Remove a previously generated Contents block (and the blank line after it). |
-| `parse` | Parsing | `scripts/build-index.mjs:109` | Sections and symbols of one file, by 0-based line index. |
-| `headerEnd` | Parsing | `scripts/build-index.mjs:136` | Index just after the file's header comment (or 0 if it has none). |
-| `withToc` | Contents block | `scripts/build-index.mjs:148` | Insert a fresh Contents block after the header comment. |
-| `stripMdToc` | Markdown Contents block | `scripts/build-index.mjs:182` | Remove a previously generated markdown Contents block (and the blank line after it). |
-| `withMdToc` | Markdown Contents block | `scripts/build-index.mjs:195` | Insert a heading Contents block (## and ### headings with their line numbers) after a long doc's title, as an HTML comment: invisible on GitHub, read by Clau… |
-| `readCommands` | CODE_INDEX.md | `scripts/build-index.mjs:227` | The slash commands defined in src/commands.js, read from its text — the project's modules are never imported (loading one could start things, and needs `.env`). |
-| `table` | CODE_INDEX.md | `scripts/build-index.mjs:242` | A markdown table from a header row and data rows. |
-| `buildCodeIndex` | CODE_INDEX.md | `scripts/build-index.mjs:249` | The full text of CODE_INDEX.md for the given (already Contents-stamped) code files. |
-| `refresh` | Main | `scripts/build-index.mjs:341` | One file run through `transform` (lines → lines), keeping its line endings — computed only; build() writes it once everything has been worked out. |
-| `build` | Main | `scripts/build-index.mjs:352` | One full pass: rewrite stale Contents blocks and CODE_INDEX.md (or, with --check, only report), then report doc drift. |
-| `watch` | Main | `scripts/build-index.mjs:395` | --watch: rebuild whenever a code file under src/ or scripts/, or a doc in the project root, is saved — for edits made outside Claude Code (an editor), which … |
+| `sectionAt` | Parsing | `scripts/build-index.mjs:66` | The section name if a boxed section header (bar, `//   Name`, bar) starts at line `i`, else null. |
+| `purposeAbove` | Parsing | `scripts/build-index.mjs:72` | First sentence of the comment block ending right above line `i`. |
+| `stripToc` | Parsing | `scripts/build-index.mjs:100` | Remove a previously generated Contents block (and the blank line after it). |
+| `parse` | Parsing | `scripts/build-index.mjs:113` | Sections and symbols of one file, by 0-based line index. |
+| `headerEnd` | Parsing | `scripts/build-index.mjs:140` | Index just after the file's header comment (or 0 if it has none). |
+| `withToc` | Contents block | `scripts/build-index.mjs:155` | Insert a fresh Contents block after the header comment. |
+| `stripMdToc` | Markdown Contents block | `scripts/build-index.mjs:186` | Remove a previously generated markdown Contents block (and the blank line after it). |
+| `withMdToc` | Markdown Contents block | `scripts/build-index.mjs:199` | Insert a heading Contents block (## and ### headings with their line numbers) after a long doc's title, as an HTML comment: invisible on GitHub, read by Clau… |
+| `readCommands` | CODE_INDEX.md | `scripts/build-index.mjs:231` | The slash commands defined in src/commands.js, read from its text — the project's modules are never imported (loading one could start things, and needs `.env`). |
+| `table` | CODE_INDEX.md | `scripts/build-index.mjs:246` | A markdown table from a header row and data rows. |
+| `buildCodeIndex` | CODE_INDEX.md | `scripts/build-index.mjs:253` | The full text of CODE_INDEX.md for the given (already Contents-stamped) code files. |
+| `refresh` | Main | `scripts/build-index.mjs:345` | One file run through `transform` (lines → lines), keeping its line endings — computed only; build() writes it once everything has been worked out. |
+| `build` | Main | `scripts/build-index.mjs:358` | One full pass: rewrite stale Contents blocks and CODE_INDEX.md (or, with --check, only report), then report doc drift. |
+| `watch` | Main | `scripts/build-index.mjs:401` | --watch: rebuild whenever a code file under src/ or scripts/, or a doc in the project root, is saved — for edits made outside Claude Code (an editor), which … |
 
 ### scripts/doc-checks.mjs
 
