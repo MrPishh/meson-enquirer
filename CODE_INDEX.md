@@ -19,7 +19,7 @@
 | File | Lines | Sections (start line) | Purpose |
 | --- | --- | --- | --- |
 | `src/commands.js` | 93 | Definitions (19) · Handlers (39) | Slash commands: definitions (registered by scripts/register-commands.mjs) and their handlers. |
-| `src/config.js` | 106 | Settings (17) | Every .env setting, parsed once. |
+| `src/config.js` | 104 | Settings (17) | Every .env setting, parsed once. |
 | `src/decode.js` | 76 | Decoding (31) · Formatting (55) | Decoder for Meson's 32-byte "encoded swap". |
 | `src/discord-util.js` | 70 | Permission & member checks (18) · Message helpers (47) | Small Discord helpers shared by the ticket flow and the slash command. |
 | `src/explorer-check.js` | 118 | Fingerprint (27) · Fetching (58) · Schedule (97) | Watches the Meson explorer's own status function — the one `explorerStatus` (src/meson.js) is a line-for-line port of — and warns in the log when Meson chang… |
@@ -31,16 +31,16 @@
 | `src/render.js` | 361 | Shared helpers (43) · Swap details embed (72) · Plain-text messages (179) · Wallet embeds (236) · Not-found embed (320) · Recognising our own messages (340) | Everything the bot posts: swap details embed, wallet (unfinished swaps) embeds, the plain-text ⏳ / closing / "couldn't find" messages, and the /meson-query n… |
 | `src/ticket-state.js` | 83 | State (33) · Helpers (61) | Per-ticket memory. |
 | `src/tickets.js` | 193 | Entry point (30) · Message handling (93) · Posting (145) | Ticket auto-reply: reads Ticket Tool's form embed and the user's later messages, and posts each new swap they name (then hands it to watchSwap). |
-| `src/watch.js` | 241 | Polling (39) · Watch lifecycle (167) | Keeps a posted swap current until it finishes. |
-| `scripts/build-index.mjs` | 404 | Parsing (59) · Contents block (140) · Markdown Contents block (176) · CODE_INDEX.md (217) · Main (318) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, the heading Contents block of every long doc (README.md… |
+| `src/watch.js` | 232 | Polling (39) · Watch lifecycle (162) | Keeps a posted swap current until it finishes. |
+| `scripts/build-index.mjs` | 418 | Parsing (60) · Contents block (141) · Markdown Contents block (177) · CODE_INDEX.md (218) · Main (336) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, the heading Contents block of every long doc (README.md… |
 | `scripts/check-explorer.mjs` | 22 | — | `npm run check-explorer` — check from the terminal whether the Meson explorer's status function still matches our port (`explorerStatus` in src/meson.js), th… |
 | `scripts/doc-checks.mjs` | 277 | Reading the docs (32) · Checks (113) | Doc-drift checks run by `npm run index` (scripts/build-index.mjs): the hand-written docs must point to things that exist, in the places they say. |
 | `scripts/index-hook.mjs` | 23 | — | Claude Code PostToolUse hook (.claude/settings.json): after an Edit/Write to a .js/.mjs file under src/ or scripts/, or to a doc in the project root, rebuild… |
 | `scripts/lookup-address.mjs` | 48 | — | CLI: list a wallet's swaps (one page, or the ticket's unfinished view). |
 | `scripts/lookup.mjs` | 47 | — | CLI: look up one swap exactly as a ticket would. |
-| `scripts/refresh-presets.mjs` | 123 | — | Rebuilds src/presets.json from the live Meson Explorer bundle. |
+| `scripts/refresh-presets.mjs` | 138 | Fetching (26) · Reading the bundle's chain table (37) · Writing presets.json (94) | Rebuilds src/presets.json from the live Meson Explorer bundle. |
 | `scripts/register-commands.mjs` | 21 | — | Registers the bot's slash commands (defined in src/commands.js). |
-| `scripts/stop-hook.mjs` | 68 | — | Claude Code Stop hook (.claude/settings.json): when Claude is about to finish a turn, rebuild the index and run `build-index.mjs --check`; if docs or index h… |
+| `scripts/stop-hook.mjs` | 78 | Working-tree fingerprint (21) · Hook (44) | Claude Code Stop hook (.claude/settings.json): when Claude is about to finish a turn, rebuild the index and run `build-index.mjs --check`; if docs or index h… |
 
 ## Discord events
 
@@ -80,14 +80,13 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | `SWAP_WATCH_SLOWEST_AFTER_MINUTES` | `watchSlowestAfterMs` | `src/config.js:77` |
 | `SWAP_WATCH_SLOWEST_INTERVAL_SECONDS` | `watchSlowestIntervalMs` | `src/config.js:78` |
 | `SWAP_WATCH_MAX_HOURS` | `watchMaxMs` | `src/config.js:79` |
-| `PROCESSING_MESSAGE_DELAY_SECONDS` | `processingDelayMs` | `src/config.js:81` |
-| `MESON_TIMEOUT_SECONDS` | `mesonTimeoutMs` | `src/config.js:84` |
-| `MESON_RETRIES` | `mesonRetries` | `src/config.js:85` |
-| `TICKET_RETRY_SECONDS` | `ticketRetryMs` | `src/config.js:87` |
-| `TICKET_RETRY_MAX_SECONDS` | `ticketRetryMaxMs` | `src/config.js:88` |
-| `CHAIN_HEALTH_CACHE_SECONDS` | `chainHealthMs` | `src/config.js:91` |
-| `EXPLORER_CHECK_HOURS` | `explorerCheckMs` | `src/config.js:94` |
-| `JITTER_PERCENT` | `jitterPercent` | `src/config.js:97` |
+| `MESON_TIMEOUT_SECONDS` | `mesonTimeoutMs` | `src/config.js:82` |
+| `MESON_RETRIES` | `mesonRetries` | `src/config.js:83` |
+| `TICKET_RETRY_SECONDS` | `ticketRetryMs` | `src/config.js:85` |
+| `TICKET_RETRY_MAX_SECONDS` | `ticketRetryMaxMs` | `src/config.js:86` |
+| `CHAIN_HEALTH_CACHE_SECONDS` | `chainHealthMs` | `src/config.js:89` |
+| `EXPLORER_CHECK_HOURS` | `explorerCheckMs` | `src/config.js:92` |
+| `JITTER_PERCENT` | `jitterPercent` | `src/config.js:95` |
 
 ## Functions
 
@@ -206,7 +205,7 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | `txValue` | Swap details embed | `src/render.js:114` | The source-side and destination-side transaction hashes, with links. |
 | `buildChainNotice` | Swap details embed | `src/render.js:139` | The "⚠️ Network notice" text: which of the swap's chains Meson cannot reach right now. |
 | `buildSwapEmbed` `export` | Swap details embed | `src/render.js:149` | The swap details embed — posted in tickets and by /meson-query. |
-| `buildProcessingMessage` `export` | Plain-text messages | `src/render.js:187` | Plain-text reply to a swap's details once it has been unfinished for PROCESSING_MESSAGE_DELAY_SECONDS while still moving normally (status.ok) — posted by wat… |
+| `buildProcessingMessage` `export` | Plain-text messages | `src/render.js:187` | Plain-text reply to a new swap's details while it is still moving normally (status.ok, not finished) — posted by watch.js. |
 | `buildOutcomeMessage` `export` | Plain-text messages | `src/render.js:204` | The closing note posted (as plain text, not an embed) as a reply to the swap details once a swap has finished (Done / Released → ✅, Cancelled → ↩️), or null … |
 | `buildSwapNotFoundMessage` `export` | Plain-text messages | `src/render.js:228` | Plain-text reply when a user pastes swap-shaped text that Meson does not know. |
 | `addressRowValue` | Wallet embeds | `src/render.js:253` | One row of an address's swap list: link, route, amount, request time. |
@@ -249,30 +248,31 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | `scheduleRound` | Polling | `src/watch.js:71` | Plan the next check round, unless one is planned or running, or nothing is watched. |
 | `runRound` | Polling | `src/watch.js:80` | One check round: every watched swap that is due is re-checked together — one Meson request per SWAP_BATCH_SIZE swaps (getSwaps), however many tickets they ar… |
 | `applyCheck` | Polling | `src/watch.js:117` | Act on one fresh look at a watched swap: edit the embed if it changed, post the closing message and stop once it is finished. |
-| `postProcessing` | Polling | `src/watch.js:155` | Post a swap's ⏳ "being processed" reply. |
-| `stopWatch` | Polling | `src/watch.js:162` | End one watch (logged). |
-| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:172` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
-| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:181` | Bring a swap's ⏳ and closing message in line with the ticket as it is now: its "Swap #n", and whether "ticket will be closed soon" still holds. |
-| `watchSwap` `export` | Watch lifecycle | `src/watch.js:201` | Follow a just-posted swap: post its closing note if it is already finished; otherwise hold back its ⏳ (or post it now if PROCESSING_MESSAGE_DELAY_SECONDS is … |
-| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:236` | Cancel every watch in a channel — called when a ticket channel is deleted. |
+| `postProcessing` | Polling | `src/watch.js:150` | Post a swap's ⏳ "being processed" reply. |
+| `stopWatch` | Polling | `src/watch.js:157` | End one watch (logged). |
+| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:167` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
+| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:176` | Bring a swap's ⏳ and closing message in line with the ticket as it is now: its "Swap #n", and whether "ticket will be closed soon" still holds. |
+| `watchSwap` `export` | Watch lifecycle | `src/watch.js:196` | Follow a just-posted swap: post its closing note if it is already finished; otherwise post its ⏳ (if it is moving normally) and start re-checking it. |
+| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:227` | Cancel every watch in a channel — called when a ticket channel is deleted. |
 
 ### scripts/build-index.mjs
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `sectionAt` | Parsing | `scripts/build-index.mjs:64` | The section name if a boxed section header (bar, `//   Name`, bar) starts at line `i`, else null. |
-| `purposeAbove` | Parsing | `scripts/build-index.mjs:70` | First sentence of the comment block ending right above line `i`. |
-| `stripToc` | Parsing | `scripts/build-index.mjs:95` | Remove a previously generated Contents block (and the blank line after it). |
-| `parse` | Parsing | `scripts/build-index.mjs:108` | Sections and symbols of one file, by 0-based line index. |
-| `headerEnd` | Parsing | `scripts/build-index.mjs:135` | Index just after the file's header comment (or 0 if it has none). |
-| `withToc` | Contents block | `scripts/build-index.mjs:147` | Insert a fresh Contents block after the header comment. |
-| `stripMdToc` | Markdown Contents block | `scripts/build-index.mjs:181` | Remove a previously generated markdown Contents block (and the blank line after it). |
-| `withMdToc` | Markdown Contents block | `scripts/build-index.mjs:194` | Insert a heading Contents block (## and ### headings with their line numbers) after a long doc's title, as an HTML comment: invisible on GitHub, read by Clau… |
-| `table` | CODE_INDEX.md | `scripts/build-index.mjs:222` | A markdown table from a header row and data rows. |
-| `buildCodeIndex` | CODE_INDEX.md | `scripts/build-index.mjs:229` | The full text of CODE_INDEX.md for the given (already Contents-stamped) code files. |
-| `refresh` | Main | `scripts/build-index.mjs:323` | Rewrite one file through `transform` (lines → lines), keeping its line endings; records it in `stale` if it changed (written unless --check). |
-| `build` | Main | `scripts/build-index.mjs:336` | One full pass: rewrite stale Contents blocks and CODE_INDEX.md (or, with --check, only report), then report doc drift. |
-| `watch` | Main | `scripts/build-index.mjs:381` | --watch: rebuild whenever a code file under src/ or scripts/, or a doc in the project root, is saved — for edits made outside Claude Code (an editor), which … |
+| `sectionAt` | Parsing | `scripts/build-index.mjs:65` | The section name if a boxed section header (bar, `//   Name`, bar) starts at line `i`, else null. |
+| `purposeAbove` | Parsing | `scripts/build-index.mjs:71` | First sentence of the comment block ending right above line `i`. |
+| `stripToc` | Parsing | `scripts/build-index.mjs:96` | Remove a previously generated Contents block (and the blank line after it). |
+| `parse` | Parsing | `scripts/build-index.mjs:109` | Sections and symbols of one file, by 0-based line index. |
+| `headerEnd` | Parsing | `scripts/build-index.mjs:136` | Index just after the file's header comment (or 0 if it has none). |
+| `withToc` | Contents block | `scripts/build-index.mjs:148` | Insert a fresh Contents block after the header comment. |
+| `stripMdToc` | Markdown Contents block | `scripts/build-index.mjs:182` | Remove a previously generated markdown Contents block (and the blank line after it). |
+| `withMdToc` | Markdown Contents block | `scripts/build-index.mjs:195` | Insert a heading Contents block (## and ### headings with their line numbers) after a long doc's title, as an HTML comment: invisible on GitHub, read by Clau… |
+| `readCommands` | CODE_INDEX.md | `scripts/build-index.mjs:227` | The slash commands defined in src/commands.js, read from its text — the project's modules are never imported (loading one could start things, and needs `.env`). |
+| `table` | CODE_INDEX.md | `scripts/build-index.mjs:242` | A markdown table from a header row and data rows. |
+| `buildCodeIndex` | CODE_INDEX.md | `scripts/build-index.mjs:249` | The full text of CODE_INDEX.md for the given (already Contents-stamped) code files. |
+| `refresh` | Main | `scripts/build-index.mjs:341` | One file run through `transform` (lines → lines), keeping its line endings — computed only; build() writes it once everything has been worked out. |
+| `build` | Main | `scripts/build-index.mjs:352` | One full pass: rewrite stale Contents blocks and CODE_INDEX.md (or, with --check, only report), then report doc drift. |
+| `watch` | Main | `scripts/build-index.mjs:395` | --watch: rebuild whenever a code file under src/ or scripts/, or a doc in the project root, is saved — for edits made outside Claude Code (an editor), which … |
 
 ### scripts/doc-checks.mjs
 
@@ -306,20 +306,20 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `text` | — | `scripts/refresh-presets.mjs:24` | GET a URL as text, failing on any non-2xx status. |
-| `endOfObject` | — | `scripts/refresh-presets.mjs:31` | Find the end index of the JSON value starting at `start` (must be '{'). |
-| `jsToJson` | — | `scripts/refresh-presets.mjs:54` | The bundle's object literals are minified JavaScript, not JSON, and use two string escapes JSON.parse rejects: `\xNN` for non-ASCII characters (B² Network is… |
-| `extractChains` | — | `scripts/refresh-presets.mjs:61` | Every chain object (one with a `shortSlip44`) in a bundle chunk, in bundle order. |
-| `isTestnet` | — | `scripts/refresh-presets.mjs:84` | Whether a chain is a testnet — those are left out of presets.json. |
-| `main` | — | `scripts/refresh-presets.mjs:87` | Fetch the explorer, collect every chain from its chunks (later definitions win) and write src/presets.json. |
+| `text` | Fetching | `scripts/refresh-presets.mjs:31` | GET a URL as text, failing on any non-2xx status. |
+| `endOfObject` | Reading the bundle's chain table | `scripts/refresh-presets.mjs:42` | Find the end index of the JSON value starting at `start` (must be '{'). |
+| `jsToJson` | Reading the bundle's chain table | `scripts/refresh-presets.mjs:65` | The bundle's object literals are minified JavaScript, not JSON, and use two string escapes JSON.parse rejects: `\xNN` for non-ASCII characters (B² Network is… |
+| `extractChains` | Reading the bundle's chain table | `scripts/refresh-presets.mjs:72` | Every chain object (one with a `shortSlip44`) in a bundle chunk, in bundle order. |
+| `isTestnet` | Writing presets.json | `scripts/refresh-presets.mjs:99` | Whether a chain is a testnet — those are left out of presets.json. |
+| `main` | Writing presets.json | `scripts/refresh-presets.mjs:102` | Fetch the explorer, collect every chain from its chunks (later definitions win) and write src/presets.json. |
 
 ### scripts/stop-hook.mjs
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `git` | — | `scripts/stop-hook.mjs:23` | Run git in the project and return its output, or null when git is unavailable / this is not a repository. |
-| `fingerprint` | — | `scripts/stop-hook.mjs:28` | A hash of everything that differs from the last commit — tracked changes and untracked files (by size and time) — or null outside git. |
-| `reply` | — | `scripts/stop-hook.mjs:39` | Answer Claude Code (JSON on stdout) and end. |
+| `git` | Working-tree fingerprint | `scripts/stop-hook.mjs:29` | Run git in the project and return its output, or null when git is unavailable / this is not a repository. |
+| `fingerprint` | Working-tree fingerprint | `scripts/stop-hook.mjs:34` | A hash of everything that differs from the last commit — tracked changes and untracked files (by size and time) — or null outside git. |
+| `reply` | Hook | `scripts/stop-hook.mjs:49` | Answer Claude Code (JSON on stdout) and end. |
 
 ## Constants
 

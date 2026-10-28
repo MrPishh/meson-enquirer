@@ -24,7 +24,8 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
   Don't hard-wrap comments at 80 columns.
   Lists, aligned tables and example commands inside comments keep their own lines.
 - **Contents blocks and `CODE_INDEX.md` are generated** by `scripts/build-index.mjs` — never edit them by hand. That includes the heading Contents block (an HTML comment) at the top of every root doc of 150+ lines except `CLAUDE.md`, which is always read whole.
-  They are rebuilt automatically: after every Edit/Write of a code file or root doc (Claude Code hook in `.claude/settings.json` → `scripts/index-hook.mjs`), when Claude finishes a turn (`scripts/stop-hook.mjs`) and before every `npm start`.
+  They are rebuilt automatically: after every Edit/Write of a code file or root doc (Claude Code hook in `.claude/settings.json` → `scripts/index-hook.mjs`), when Claude finishes a turn (`scripts/stop-hook.mjs`) and before every `npm start` (where a failure only warns — the app still starts).
+  The builder reads every file as text and never imports a project module, so it needs no `.env`, cannot start anything, and writes nothing at all if any file fails to parse.
   When editing by hand in an editor, keep `npm run index:watch` running — it rebuilds on every save.
   `npm run index` rebuilds once; `npm run index -- --check` changes nothing and exits 1 if anything is stale or a doc-drift error is found.
 - **The hand-written docs are checked too** (`scripts/doc-checks.mjs`, part of every index run): the file map lists exactly the files in `src/` and `scripts/`; each "Where to look for…" row names functions that are defined in the files that row names; every backticked code name in `CLAUDE.md` / `README.md` exists; settings match across `src/config.js`, `.env.example`, `.env` and README § Settings; slash commands match their table; every npm script is documented and every documented one exists; no hand-written line numbers (point to a heading or name — `CODE_INDEX.md` has the lines); links and #anchors resolve; no unused imports or private definitions.
@@ -76,7 +77,7 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 | Change what counts as a swap ID / encoding / hash / wallet | `extractCandidates`, `extractAddressCandidates` in `src/extract.js` |
 | Change what happens when a ticket message arrives | `handleTicketMessage` in `src/tickets.js` |
 | Change the wallet fallback (which swaps, how far back) | `postWalletSwaps` (`src/tickets.js`), `listUnfinishedSwapsForAddress` (`src/meson.js`), `buildUnfinishedAddressEmbeds` (`src/render.js`) |
-| Change follow-ups, polling speed, when watching stops, when the ⏳ appears | `watchSwap`, `watchDelay`, `runRound` (the shared check round), `applyCheck`, `postProcessing` in `src/watch.js` (`PROCESSING_MESSAGE_DELAY_SECONDS`) |
+| Change follow-ups, polling speed, when watching stops | `watchSwap`, `watchDelay`, `runRound` (the shared check round), `applyCheck`, `postProcessing` in `src/watch.js` |
 | Change what happens while Meson is down (retries, back-off, random spacing) | `getJson` (quick retries), `jitter` in `src/meson.js`; `queueMessage`, `retryDelay`, `worthRetrying` in `src/tickets.js`; `claim` in `src/recover.js` (`MESON_*`, `TICKET_RETRY_*`, `JITTER_PERCENT`) |
 | Change the explorer status check (when, how it compares) | `checkExplorerStatus`, `startExplorerCheck`, `PORTED_FINGERPRINT` in `src/explorer-check.js` (`EXPLORER_CHECK_HOURS`) |
 | Change how a status is worked out | `explorerStatus` (port of the explorer's — re-port, don't tune) and `deriveStatus` in `src/meson.js` (+ `CONTEXT.md` § Status derivation) |
@@ -106,7 +107,7 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 5. `postSwap` → details embed (reply to the user's message, or plain send for the form).
    From the 2nd swap on, embeds, ⏳ lines and closing messages carry `#n` — #1's embed, ⏳ and closing message are re-rendered, so every swap's messages are always labelled alike.
    Each new swap also re-renders the earlier closing messages (`syncFollowUps`, `src/watch.js`): "ticket will be closed soon" is dropped from them while the new swap is open.
-   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ (only if `status.ok`; straight away by default, or — if `PROCESSING_MESSAGE_DELAY_SECONDS` is set — held back and posted by a check round only if the swap is still unfinished then), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ line.
+   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ (only if `status.ok`), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ line.
 
 ### Statuses
 
@@ -116,8 +117,8 @@ The explorer's `*` (e.g. "Expired*") is kept: it is `status.star`, shown after `
 
 | Status | Meaning | ⏳ line | Closing message | In wallet list | Watched |
 | --- | --- | --- | --- | --- | --- |
-| Pending / Requesting / Posted / Bonded / Locked | still moving (whatever the explorer shows before executed confirms) | yes (after `PROCESSING_MESSAGE_DELAY_SECONDS` if set) | — | yes | yes |
-| Releasing | executed has confirmed (even past the deadline), or a release is requested / confirming / being retried | yes (after `PROCESSING_MESSAGE_DELAY_SECONDS` if set) | — | yes | yes |
+| Pending / Requesting / Posted / Bonded / Locked | still moving (whatever the explorer shows before executed confirms) | yes | — | yes | yes |
+| Releasing | executed has confirmed (even past the deadline), or a release is requested / confirming / being retried | yes | — | yes | yes |
 | Done | released to the recipient | — | ✅ Transaction Completed | no | stops |
 | Released | released, LP has not executed yet — complete for the user | — | ✅ Transaction Completed | no | stops |
 | Cancelled | funds returned to the initiator | — | ↩️ Transaction Cancelled | no | stops |
@@ -182,7 +183,7 @@ There is no test suite.
 - **`allowFallback: false`** when scanning tickets for addresses — without it any sentence "matches" as an address. The CLI is the only caller that wants the fallback.
 - **Where auto-reply runs: channels under a `REPLY_CATEGORY_IDS` category** (threads count by their parent channel's category), and only where the bot has View / Send / Embed / Read History. `canReply` skips any other channel before any lookup. `/meson-query` uses the same category check (`inReplyCategory`) but not the permission check — interaction replies need no Send Messages.
   In a private category the bot's role must be a support role on the Ticket Tool panel — ticket channels get the panel's overwrites, not the category's.
-- **`.env` must be complete — the code has no defaults.** `src/config.js` stops the process if a line is missing or invalid. That applies to everything that loads it: the bot, `npm run register`, the lookup CLIs (via `src/meson.js`) and `npm run index` (it imports `src/commands.js`).
+- **`.env` must be complete — the code has no defaults.** `src/config.js` stops the process if a line is missing or invalid. That applies to everything that loads it: the bot, `npm run register` and the lookup CLIs (via `src/meson.js`). `npm run index` and the hooks do not load it — they read the code as text.
   A new setting therefore goes into `src/config.js`, `.env.example`, `.env` and README § Settings together.
 - **MESSAGE CONTENT privileged intent is required** to read Ticket Tool's embed. Without it the bot silently never replies in tickets.
 - **Nothing may crash the process** — a crash restarts the bot; recovery resumes the watches, but anything mid-send is lost and the restart costs a burst of startup requests. `index.js` logs Discord client errors and unhandled rejections; `onInteraction` catches a failed reply (e.g. Discord's 3-second window missed). Keep new handlers from throwing.
@@ -194,7 +195,7 @@ There is no test suite.
 - **Releasing never becomes Expired** (the explorer checks EXECUTED before the deadline), so a stuck release is ended only by `SWAP_WATCH_MAX_HOURS` — keep it generous.
 - **Never publish secrets.** `.env` (bot token, server/channel/role IDs) and every `.env.*` variant except `.env.example` are git-ignored — keep it that way, keep the token and every ID out of `.env.example` (only non-secret values like `AUTO_SCAN_MESSAGES=6`), and never paste real IDs or tokens into code or docs.
   Throwaway test scripts go in a temp folder, not the project.
-- **All state is in memory** (`ticket-state.js`, `watch.js`), and **Discord is the backup**: on startup `recover.js` reads every ticket channel, rebuilds each ticket from the bot's own messages (details embeds in posting order = `#n`; ⏳ / ✅ / ↩️ by the embed they reply to; wallet embeds), resumes every unfinished swap (`watchSwap` `resumed` — no second ⏳, and a ⏳ still held back at the restart is not posted; a swap that finished while down gets its closing message) and handles messages posted after the bot's last one as if new. Live messages wait in the ticket queue until its recovery is done.
+- **All state is in memory** (`ticket-state.js`, `watch.js`), and **Discord is the backup**: on startup `recover.js` reads every ticket channel, rebuilds each ticket from the bot's own messages (details embeds in posting order = `#n`; ⏳ / ✅ / ↩️ by the embed they reply to; wallet embeds), resumes every unfinished swap (`watchSwap` `resumed` — no second ⏳; a swap that finished while down gets its closing message) and handles messages posted after the bot's last one as if new. Live messages wait in the ticket queue until its recovery is done.
   So **the bot's message formats are its saved state**: changing a title, a URL, a follow-up's first characters or the reply-to structure means changing the readers in `render.js` § Recognising our own messages too, or tickets stop being recovered. The bot writes no file anywhere (only the dev tooling writes: the generated index files and the Stop hook's fingerprint in `.git/`).
 
 ## Deliberate choices
@@ -206,3 +207,4 @@ There is no test suite.
   The ⏳ line is the one message the bot deletes — once the closing message is up (also after a restart, via recovery).
   ⏳ and closing messages are edited only to renumber them or drop "closed soon" when another swap joins the ticket (silent edits).
 - User-facing follow-ups (⏳, ✅, ↩️, ❓) are plain text, not embeds.
+- The ⏳ is posted straight away. Holding it back for fast swaps was built and removed: people open a ticket only once a swap has looked stuck for a while, so the ⏳ should reassure at once — don't re-add it unasked.

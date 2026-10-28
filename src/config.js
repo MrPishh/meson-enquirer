@@ -77,8 +77,6 @@ export const config = {
   watchSlowestAfterMs: number('SWAP_WATCH_SLOWEST_AFTER_MINUTES') * 60 * 1000,
   watchSlowestIntervalMs: number('SWAP_WATCH_SLOWEST_INTERVAL_SECONDS') * 1000,
   watchMaxMs: number('SWAP_WATCH_MAX_HOURS') * 60 * 60 * 1000,
-  // 0 = post the ⏳ "being processed" line straight away (default: a ticket's swap has usually looked stuck for a while already). Above 0: hold it back this long and post it only if the swap is still unfinished then.
-  processingDelayMs: number('PROCESSING_MESSAGE_DELAY_SECONDS', 0) * 1000,
 
   // Meson API requests: give up on one after this long; retry errors this many times (waits about 1s, 2s, 4s, …, jittered).
   mesonTimeoutMs: number('MESON_TIMEOUT_SECONDS') * 1000,

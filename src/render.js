@@ -181,7 +181,7 @@ export function buildSwapEmbed (swap, opts = {}) {
 // =============================================================================
 
 /**
- * Plain-text reply to a swap's details once it has been unfinished for PROCESSING_MESSAGE_DELAY_SECONDS while still moving normally (status.ok) — posted by watch.js.
+ * Plain-text reply to a new swap's details while it is still moving normally (status.ok, not finished) — posted by watch.js.
  * `serial` matches the "#n" on the details embed when a ticket has several swaps, as on the closing message.
  */
 export function buildProcessingMessage ({ serial = null } = {}) {

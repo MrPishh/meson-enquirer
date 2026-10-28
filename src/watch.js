@@ -1,7 +1,7 @@
 /**
  * Keeps a posted swap current until it finishes.
  *
- * Right after a swap's details embed is posted, watchSwap replies with the closing note if it is already finished (Done / Released / Cancelled); otherwise a swap still moving normally gets the ⏳ "being processed" line — straight away, or held back PROCESSING_MESSAGE_DELAY_SECONDS if that is set — and it re-polls in the background.
+ * Right after a swap's details embed is posted, watchSwap replies with the closing note if it is already finished (Done / Released / Cancelled); otherwise a swap still moving normally gets the ⏳ "being processed" line straight away, and it re-polls in the background.
  * On every status or event change it edits the details embed in place (silent — an edit notifies nobody); once the swap is finished it replies to that embed with the closing note, which is what the user actually gets notified about, and deletes its ⏳ line.
  * syncFollowUps keeps a swap's ⏳ / closing note labelled "Swap #n" and drops "closed soon" when another swap joins the ticket.
  *
@@ -21,13 +21,13 @@
 // L71     scheduleRound()
 // L80     runRound()
 // L117    applyCheck()
-// L155    postProcessing()
-// L162    stopWatch()
-// L167  Watch lifecycle
-// L172    detailsEmbed()
-// L181    syncFollowUps()
-// L201    watchSwap()
-// L236    stopWatchingChannel()
+// L150    postProcessing()
+// L157    stopWatch()
+// L162  Watch lifecycle
+// L167    detailsEmbed()
+// L176    syncFollowUps()
+// L196    watchSwap()
+// L227    stopWatchingChannel()
 // ----- end of contents -----
 
 import { config } from './config.js'
@@ -129,17 +129,12 @@ async function applyCheck (w, latest) {
     }
     const done = buildOutcomeMessage(latest, outcomeOpts(t, entry))
     if (done) {
-      entry.processingDueAt = null // finished before its ⏳ was due — it never gets one
       entry.outcome = await quietReply(entry.message, { content: done })
       // Staff may have deleted it already — not an error.
       await entry.processing?.delete().catch(() => {})
       entry.processing = null
       await syncFollowUps(t, entry)
       stopWatch(w, `${latest.status.label} — posted outcome`)
-    } else if (entry.processingDueAt && Date.now() >= entry.processingDueAt) {
-      // Still unfinished once the hold-back is over: now it gets its ⏳ — unless it is no longer moving normally (Expired, Failed…), which never gets one.
-      entry.processingDueAt = null
-      if (latest.status.ok && !entry.processing) await postProcessing(t, entry)
     }
   } catch (err) {
     if (CHANNEL_GONE.has(err.code)) return stopWatch(w, 'ticket closed')
@@ -192,7 +187,7 @@ export async function syncFollowUps (t, entry) {
 }
 
 /**
- * Follow a just-posted swap: post its closing note if it is already finished; otherwise hold back its ⏳ (or post it now if PROCESSING_MESSAGE_DELAY_SECONDS is 0) and start re-checking it.
+ * Follow a just-posted swap: post its closing note if it is already finished; otherwise post its ⏳ (if it is moving normally) and start re-checking it.
  * `resumed`: the swap was rebuilt after a restart (recover.js) — its ⏳ / closing message already exist, so none is posted again; the embed is brought up to date, and a swap that finished while the bot was down gets its closing message now.
  * @param {import('./ticket-state.js').Ticket} t
  * @param {import('./ticket-state.js').SwapEntry} entry
@@ -219,12 +214,8 @@ export async function watchSwap (t, entry, { resumed = false } = {}) {
     console.log(`#${channel.name}: ${entry.swapId} already ${entry.latest.status.label} — posted outcome`)
     return
   }
-  // Failed / Expired / Unlocked (status.ok false) will not "complete shortly"; a resumed swap keeps the ⏳ it has (or had) — one held back and not yet posted when the bot restarted is not posted.
-  // With PROCESSING_MESSAGE_DELAY_SECONDS set, the ⏳ is held back and posted by a check round only if the swap is still unfinished then (applyCheck); at 0 (the default), or without re-checks, it goes out now.
-  if (entry.latest.status.ok && !resumed) {
-    if (config.processingDelayMs > 0 && config.watchIntervalMs > 0) entry.processingDueAt = Date.now() + config.processingDelayMs
-    else await postProcessing(t, entry)
-  }
+  // Failed / Expired / Unlocked (status.ok false) will not "complete shortly"; a resumed swap keeps the ⏳ it has (or had).
+  if (entry.latest.status.ok && !resumed) await postProcessing(t, entry)
   if (config.watchIntervalMs <= 0) return
 
   // Checked from the next round on, together with every other due swap.
