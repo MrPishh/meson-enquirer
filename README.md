@@ -143,7 +143,7 @@ Anything the explorer's search resolves, alone or buried in a sentence, backtick
 - **Network notice.** While a swap is unfinished and Meson can't reach its source or destination chain, the details embed says so ("⚠️ Network notice — Arbitrum is having network problems right now, which can delay this swap."). It goes away by itself once the chain is healthy again.
 - **Wallet only.** If no swap is found and the ticket shows none yet, the bot lists the wallet's unfinished swaps (limits: the `ADDRESS_*` settings). A wallet pasted after a swap is shown is ignored.
 - **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so. The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
-- **Meson down never loses a ticket.** If Meson can't be reached or rejects requests, the bot keeps retrying (the `TICKET_RETRY_*` settings) until the ticket is answered, and keeps following posted swaps through the outage — it only stops when the ticket is closed.
+- **Meson down never loses a ticket.** If Meson can't be reached or rejects requests, the bot keeps retrying (the `TICKET_RETRY_*` settings) until the ticket is answered, and keeps following posted swaps through the outage. It stops only when the ticket is closed or Discord refuses the bot's post (e.g. missing permissions) — and following a swap also ends after `SWAP_WATCH_MAX_HOURS`.
 - **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, posting ✅ / ↩️, removing ⏳ — including for swaps that finished while it was down) and answers messages users sent while it was offline.
 
 ## Maintenance

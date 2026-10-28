@@ -95,14 +95,14 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 1. `onTicketMessage` (`src/tickets.js`) — skip unless the channel is under a `REPLY_CATEGORY_IDS` category and the bot may post there (`canReply` in `src/discord-util.js`: View, Send Messages, Embed Links, Read Message History); then `admitMessage` skips this bot's own messages and staff.
    Other bots (Ticket Tool's form) are read only for the first `AUTO_SCAN_MESSAGES` bot messages; the user's own messages for the whole ticket.
    Messages are queued so each ticket handles one at a time.
-2. `handleTicketMessage` — `extractCandidates` finds every swap-shaped value and orders them: **1 Meson explorer link (its swap ID) → 2 swap ID / encoded swap → 3 source explorer link (its hash) → 4 bare source hash** (Tron/BTC hex, Solana signature).
+2. `handleTicketMessage` — `extractCandidates` finds every swap-shaped value and orders them: **1 Meson explorer link (its swap ID) → 2 swap ID / encoded swap → 3 chain explorer link (its hash — source or destination chain) → 4 bare chain hash** (Tron/BTC hex, Solana signature).
    Meson-specific before chain-level, and a link (which says what it is) before a bare value.
    `lookupSwap` sends every one through Meson's search, which resolves them all the same way — so the order decides only which is tried first, never what is found.
    (A "swap ID before hash" two-pass lookup was tried and removed: it changed nothing.) Values already known to the ticket are skipped without a lookup; each new swap found is posted (`postSwap`); one already shown is ignored.
 3. **5 · Wallet fallback** (`postWalletSwaps`) — only if nothing swap-shaped resolved *and* the ticket shows no swap yet, once per address.
    Lists the wallet's swaps that are not finished (Done, Released or Cancelled).
    If the user's pasted ID was not found, the wallet embed says so (no separate ❓).
-4. **❓ "couldn't find"** — only for the user's own message (never the form, which is full of Discord IDs), only if nothing in it resolved and the wallet fallback did not run.
+4. **❓ "couldn't find"** — only for the user's own message (never the form, which is full of Discord IDs), only if nothing in it resolved and the wallet fallback did not run (or ran and Meson rejected the address).
 5. `postSwap` → details embed (reply to the user's message, or plain send for the form).
    From the 2nd swap on, embeds, ⏳ lines and closing messages carry `#n` — #1's embed, ⏳ and closing message are re-rendered, so every swap's messages are always labelled alike.
    Each new swap also re-renders the earlier closing messages (`syncFollowUps`, `src/watch.js`): "ticket will be closed soon" is dropped from them while the new swap is open.
@@ -122,7 +122,7 @@ The explorer's `*` (e.g. "Expired*") is kept: it is `status.star`, shown after `
 | Released | released, LP has not executed yet — complete for the user | — | ✅ Transaction Completed | no | stops |
 | Cancelled | funds returned to the initiator | — | ↩️ Transaction Cancelled | no | stops |
 | Expired | past deadline before executed; shown as just "not completed in time" — support may still cancel/refund or complete it, so the bot promises nothing | no | — (✅/↩️ once resolved) | yes | yes |
-| Unlocked | LP lock undone, refund pending | no | — (↩️ if later cancelled) | yes | yes |
+| Unlocked | LP lock undone — shown as just "did not go through"; the bot promises nothing about the funds | no | — (✅/↩️ once resolved) | yes | yes |
 | Failed | only failed attempts so far (rare: any other step outranks it) | no | — (✅/↩️ once resolved) | yes | yes |
 
 "Finished" (`isFinished`) = Done, Released or Cancelled. "Ticket will be closed soon" goes only on the closing message of the swap that finishes last — when every *other* swap in the ticket is finished too; earlier closing messages lose it when a new swap joins and never get it back.

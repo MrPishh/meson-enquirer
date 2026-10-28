@@ -192,7 +192,7 @@ export async function syncFollowUps (t, entry) {
 }
 
 /**
- * Post the first follow-up for a just-posted swap and, if it is not finished, start re-checking it.
+ * Follow a just-posted swap: post its closing note if it is already finished; otherwise hold back its ⏳ (or post it now if PROCESSING_MESSAGE_DELAY_SECONDS is 0) and start re-checking it.
  * `resumed`: the swap was rebuilt after a restart (recover.js) — its ⏳ / closing message already exist, so none is posted again; the embed is brought up to date, and a swap that finished while the bot was down gets its closing message now.
  * @param {import('./ticket-state.js').Ticket} t
  * @param {import('./ticket-state.js').SwapEntry} entry

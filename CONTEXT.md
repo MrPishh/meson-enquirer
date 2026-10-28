@@ -12,7 +12,7 @@ L213  Per-chain explorer links
 L221  Things that will break this
 end of contents -->
 
-Everything here was established empirically against live Meson endpoints on 2026-10-27 and verified field-by-field against the rendered explorer page.
+Everything here was established empirically against live Meson endpoints on 2026-10-27/28 and verified field-by-field against the rendered explorer page.
 This file exists so nobody has to repeat the reverse-engineering.
 
 ## The problem
@@ -60,7 +60,7 @@ GET https://explorer.meson.fi/api/v1/address/<address>/swap?page=0&size=10
 ```
 
 `search` is the useful discovery: one endpoint resolves **all** of these to a swap ID — swap ID, encoded swap, EVM transaction hash, and Solana signature (base58).
-Verified against all four.
+Verified against all four, and (2026-10-28) for destination-side release hashes too — an EVM one and the release hash of a Solana swap.
 Unknown input returns `{"error":{"code":-32602,"message":"Swap not found"}}` with HTTP 400 *or* 404 (`/api/v1/swap/<id>` uses 400), so error handling must look at the body, not the status.
 
 `/api/v1/swap/<id>,<id>,…` (comma-separated swap IDs, checked 2026-10-28) answers with an **array** of the same records as the single lookup, byte-for-byte: sorted by ID (not request order), duplicates merged, unknown IDs silently left out (all unknown → `[]`, HTTP 200).
@@ -73,7 +73,7 @@ Because it is undocumented, `getSwaps` looks up on its own every ID the batch di
 `/api/v1/address/<address>/swap` returns every swap the address took part in on *either* side (sender or recipient), newest first — this is what backs the explorer's "Swaps for Address" page.
 It takes `page` (0-based) and `size`.
 There is no total-count field in the response; `list.length === size` is the only signal that another page might exist, confirmed against a real address with 14 swaps across two pages of 10.
-Each list entry is the exact same record shape as the single-swap endpoint, so the same decode/status logic applies unchanged — `toSwapView()` in `src/meson.js` is shared by both.
+Each list entry is the exact same record shape as the single-swap endpoint, so the same decode/status logic applies unchanged — `toSwapView()` in `src/meson.js` is shared by the single, batch and address endpoints.
 
 Limits of the address endpoint (checked against the live API and the explorer's own front-end code):
 
@@ -139,10 +139,10 @@ Received amount = `amount - srFee - lpFee`. The encoded `fee` equals `lpFee`; `s
 
 ## Chain and token names
 
-Checked 2026-10-28 against the public EVM chain registry (`chainid.network/chains.json`, what chainlist.org shows): all 80 of Meson's EVM mainnet chains exist there under the same chain ID; names differ only in spelling (B² Network / "B2 Mainnet", Hashkey Chain / "HSKChain") and for chain ID 999, which the registry lists as "Wanchain Testnet" but Meson uses for HyperEVM. The 9 non-EVM chains (Tron, Bitcoin, Solana, Starknet, Aptos ×2, Sui, CKB, TON) are not in that registry. `refresh-presets` used to drop chains whose names contain a JavaScript escape (`B² Network`, `Merlin's Seal USDC`); it now converts them and warns about any chain it still cannot parse.
+Checked 2026-10-28 against the public EVM chain registry (`chainid.network/chains.json`, what chainlist.org shows): all 80 of Meson's EVM mainnet chains exist there under the same chain ID; names differ only in spelling (B² Network / "B2 Mainnet", Hashkey Chain / "HSKChain") and for chain ID 999, which the registry lists as "Wanchain Testnet" but Meson uses for HyperEVM. The 9 non-EVM chains (Tron, Bitcoin, Solana, Starknet, Aptos ×2, Sui, CKB, TON) are not in that registry. `refresh-presets` used to drop chains whose bundle text contains a JavaScript-only string escape (`"B\xb2 Network"`, `"Merlin\'s Seal USDC"`), which JSON rejects; it now converts them and warns about any chain it still cannot parse.
 
 Only one published source carries both `shortSlip44` and `tokenIndex`: the explorer's preset table, embedded in a webpack chunk (not served from any endpoint).
-`scripts/refresh-presets.mjs` extracts it into `src/presets.json` (87 mainnet chains).
+`scripts/refresh-presets.mjs` extracts it into `src/presets.json` (89 mainnet chains as of 2026-10-28).
 
 **The bundle ships two preset generations.** The older one has global token indexes (`1=USDC, 2=USDT`); the current one has per-chain indexes where BNB's `34` is `BSC-USD`.
 The extractor takes **later definitions win** — getting this backwards silently mislabels every token on chains that were re-indexed.
@@ -216,7 +216,7 @@ The details embed sorts steps itself (`STEP_ORDER` in `src/render.js`), and once
 The transaction path differs by format: `/tx/` for most, `/transaction/` for Tron, CKB and TON, `/txn/` for Aptos (which also needs `?network=mainnet`), `/txblock/` for Sui.
 Tron's `explorer` value already ends in `/#`.
 
-Source-side events (bonded/executed) are on the **in** chain; `RELEASED` is on the **out** chain. Linking them to the wrong chain is an easy mistake.
+Source-side events (posted, bonded, executed, cancelled) are on the **in** chain; `LOCKED`, `RELEASED` and `UNLOCKED` are on the **out** chain (`TARGET_CHAIN_STEPS` in `src/meson.js`). Linking them to the wrong chain is an easy mistake — until 2026-10-28 the bot linked LOCKED/UNLOCKED to the source chain (never seen in practice: neither occurred in 2000 swaps).
 
 ## Things that will break this
 

@@ -66,12 +66,12 @@ const MESON_SWAP_LINK = /meson\.fi\/swap\/([0-9a-zA-Z]{32,90})/g
 const HEX32 = /0x[0-9a-fA-F]{64}/g
 
 /**
- * 3. Source explorer link — the hash is taken from a /tx/<hash> path segment (or /transaction/, /txn/, /txblock/ on Tron, CKB, TON, Aptos, Sui).
+ * 3. Chain explorer link (source or destination chain) — the hash is taken from a /tx/<hash> path segment (or /transaction/, /txn/, /txblock/ on Tron, CKB, TON, Aptos, Sui).
  *    Matching the path rather than the host covers etherscan, solscan, tronscan, mempool.space, … without a per-host table.
  */
 const CHAIN_TX_LINK = /\/(?:tx|transaction|txn|txblock)\/([0-9a-zA-Z]{32,90})/g
 
-/** 4a. Bare 64-hex with no 0x — how Tron and Bitcoin hashes are usually pasted. */
+/** 4a. Bare 64-hex with no 0x — how Tron and Bitcoin hashes (either side of the swap) are usually pasted. */
 const BARE_HEX32 = /\b[0-9a-fA-F]{64}\b/g
 
 /**
@@ -87,8 +87,8 @@ const SOLANA_SIGNATURE = /\b[1-9A-HJ-NP-Za-km-z]{80,90}\b/g
  * It runs from the most Meson-specific to the least, and within each a link (which says what it is) before a bare value (which could be noise):
  *   1. Meson explorer link      → swap ID
  *   2. swap ID / encoded swap   (0x + 64 hex)
- *   3. source explorer link     → tx hash
- *   4. bare source hash         (Tron/BTC hex, Solana signature)
+ *   3. chain explorer link      → tx hash (source or destination)
+ *   4. bare chain hash          (Tron/BTC hex, Solana signature)
  * A wallet address comes after all of these, as a separate lookup (tickets.js).
  * @param {string} text
  * @returns {string[]} de-duplicated candidates, first to try first
