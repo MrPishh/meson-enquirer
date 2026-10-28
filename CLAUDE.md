@@ -103,6 +103,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | Adding | Also do |
 | --- | --- |
 | A file in `src/` or `scripts/` | A row in the file map above; section headers; a purpose comment above each definition |
+| A new code folder | Add it to `DIRS` in `scripts/build-index.mjs` and to the folder list in `checkFileMap` (`scripts/doc-checks.mjs`) — until then the index and the file-map check do not see it |
 | A setting | `src/config.js` (section `Settings`) + `.env.example` + `.env` + README § Settings — every setting must be in `.env`; there are no defaults in code |
 | A slash command | `COMMANDS` + `onInteraction` + a `handle<Name>` function in `src/commands.js`; a row in § Slash commands; then `npm run register` |
 | A message the bot posts | Its builder in `src/render.js`; if a restart must recognise it, a reader in `render.js` § Recognising our own messages |
