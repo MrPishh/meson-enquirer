@@ -24,8 +24,8 @@
 // L36    decodeEncodedSwap()
 // L55  Formatting
 // L60    AMOUNT_DECIMALS
-// L62    UNITS
-// L67    formatAmount()
+// L63    UNITS
+// L68    formatAmount()
 // ----- end of contents -----
 
 // =============================================================================
@@ -59,6 +59,7 @@ export function decodeEncodedSwap (encoded) {
 /** Meson encodes every amount with 6 decimals, whatever the token's own are. */
 const AMOUNT_DECIMALS = 6
 
+/** One whole token in the 6-decimal amount units (1_000_000n). */
 const UNITS = 10n ** BigInt(AMOUNT_DECIMALS)
 
 /**

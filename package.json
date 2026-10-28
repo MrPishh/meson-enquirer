@@ -15,6 +15,7 @@
     "lookup": "node scripts/lookup.mjs",
     "lookup-address": "node scripts/lookup-address.mjs",
     "refresh-presets": "node scripts/refresh-presets.mjs",
+    "check-explorer": "node scripts/check-explorer.mjs",
     "index": "node scripts/build-index.mjs",
     "index:watch": "node scripts/build-index.mjs --watch"
   },

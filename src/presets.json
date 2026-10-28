@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-27T07:38:55.414Z",
+ "generatedAt": "2026-10-28T10:32:17.829Z",
  "source": "https://explorer.meson.fi",
  "chains": {
   "0x003c": {
@@ -694,6 +694,45 @@
     "1": "USDC",
     "2": "USDT",
     "191": "INJ"
+   }
+  },
+  "0x6868": {
+   "id": "merlin",
+   "name": "Merlin",
+   "alias": "MERLIN",
+   "explorer": "https://scan.merlinchain.io",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "M-USDC",
+    "2": "M-USDT",
+    "65": "iUSD",
+    "67": "M-BTC",
+    "69": "MERL",
+    "71": "M-STONE",
+    "73": "SolvBTC.m",
+    "81": "xSolvBTC",
+    "243": "BTC"
+   }
+  },
+  "0x00df": {
+   "id": "b2",
+   "name": "B² Network",
+   "alias": "B2",
+   "explorer": "https://explorer.bsquared.network",
+   "addressFormat": "ethers",
+   "tokens": {
+    "1": "USDC",
+    "2": "USDT",
+    "40": "FDUSD",
+    "67": "M-BTC",
+    "71": "BSTONE",
+    "73": "SolvBTC.m",
+    "79": "uBTC",
+    "89": "B2",
+    "238": "POL",
+    "240": "fBTC",
+    "243": "BTC",
+    "254": "ETH"
    }
   },
   "0xed88": {

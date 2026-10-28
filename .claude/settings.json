@@ -12,6 +12,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/stop-hook.mjs\"",
+            "timeout": 60,
+            "statusMessage": "Checking docs against the code"
+          }
+        ]
+      }
     ]
   }
 }

@@ -16,25 +16,25 @@
 // L89     STEP_ORDER
 // L96     txSteps()
 // L114    txValue()
-// L137    buildChainNotice()
-// L147    buildSwapEmbed()
-// L177  Plain-text messages
-// L185    buildProcessingMessage()
-// L191    QUERY_WRONG_CHANNEL_MESSAGE
-// L194    CLOSING_SOON
-// L202    buildOutcomeMessage()
-// L226    buildSwapNotFoundMessage()
-// L234  Wallet embeds
-// L239    STATUS_EMOJI
-// L251    addressRowValue()
-// L263    ROWS_PER_EMBED
-// L274    buildUnfinishedAddressEmbeds()
-// L318  Not-found embed
-// L323    buildNotFoundEmbed()
-// L338  Recognising our own messages
-// L345    readSwapEmbed()
-// L351    readWalletEmbed()
-// L354    followUpKind()
+// L139    buildChainNotice()
+// L149    buildSwapEmbed()
+// L179  Plain-text messages
+// L187    buildProcessingMessage()
+// L193    QUERY_WRONG_CHANNEL_MESSAGE
+// L196    CLOSING_SOON
+// L204    buildOutcomeMessage()
+// L228    buildSwapNotFoundMessage()
+// L236  Wallet embeds
+// L241    STATUS_EMOJI
+// L253    addressRowValue()
+// L265    ROWS_PER_EMBED
+// L276    buildUnfinishedAddressEmbeds()
+// L320  Not-found embed
+// L325    buildNotFoundEmbed()
+// L340  Recognising our own messages
+// L347    readSwapEmbed()
+// L353    readWalletEmbed()
+// L356    followUpKind()
 // ----- end of contents -----
 
 import { EmbedBuilder } from 'discord.js'
@@ -89,8 +89,8 @@ const FIELD_MAX = 1024
 const STEP_ORDER = ['posted', 'bonded', 'locked', 'executed', 'requesting', 'releasing', 'released', 'unlocked', 'cancelled']
 
 /**
- * One entry per step (posted, bonded, …) for the transaction hashes field: its successful transaction, or — while it has only failed — its latest attempt, with no mention of the failures.
- * Failed retries are not listed, so a release retried many times cannot push the successful hash out of the field; every attempt is still on the Meson explorer.
+ * One entry per step (posted, bonded, …) for the transaction hashes field: its successful transaction, or — while it has only failed — its latest attempt, labelled "(failed)" by txValue.
+ * Failed retries next to a success are not listed, so a release retried many times cannot push the successful hash out of the field; every attempt is still on the Meson explorer.
  * The API lists events in no reliable order (CANCELLED before EXECUTED has been seen) and without timestamps, so steps are sorted by STEP_ORDER; among a step's failed attempts the last listed is taken as the latest.
  */
 function txSteps (events) {
@@ -125,7 +125,9 @@ function txValue (swap) {
     // A release still confirming, or only failed so far (being retried), is not "released" yet.
     const name = s.step === 'released' && !(s.ok && !s.ok.pending) ? 'releasing' : s.step
     const link = !e.hash ? '_no transaction yet_' : e.url ? `[${e.hash}](${e.url})` : code(e.hash)
-    const entry = `**${name}**${e.pending ? ' (confirming)' : ''}\n${link}`
+    // A step with only failed attempts says so — its hash alone would read as if the step had gone through.
+    const note = `${s.ok ? '' : ' (failed)'}${e.pending ? ' (confirming)' : ''}`
+    const entry = `**${name}**${note}\n${link}`
     const next = out ? `${out}\n${entry}` : entry
     if (next.length > FIELD_MAX - 2) return `${out}\n…`
     out = next
@@ -134,7 +136,7 @@ function txValue (swap) {
 }
 
 /** The "⚠️ Network notice" text: which of the swap's chains Meson cannot reach right now. */
-export function buildChainNotice (chains) {
+function buildChainNotice (chains) {
   const names = chains.map((c) => `**${c}**`).join(' and ')
   return `${names} ${chains.length > 1 ? 'are' : 'is'} having network problems right now, which can delay this swap.`
 }
@@ -179,7 +181,7 @@ export function buildSwapEmbed (swap, opts = {}) {
 // =============================================================================
 
 /**
- * Plain-text reply to a new swap's details while it is still moving normally (status.ok, not finished).
+ * Plain-text reply to a swap's details once it has been unfinished for PROCESSING_MESSAGE_DELAY_SECONDS while still moving normally (status.ok) — posted by watch.js.
  * `serial` matches the "#n" on the details embed when a ticket has several swaps, as on the closing message.
  */
 export function buildProcessingMessage ({ serial = null } = {}) {
