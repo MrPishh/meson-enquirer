@@ -103,15 +103,22 @@ Testnets share a `shortSlip44` with their mainnet (`bnb-testnet` is also `0x02ca
 
 ## Status derivation
 
-The API has no status field. It is derived from `events[]` + `expireTs`:
+The API has no status field. **The bot uses the explorer's own status function**, ported line for line as `explorerStatus` in `src/meson.js` — support wants the heading to always match what the explorer shows.
+It lives in the explorer bundle (a `_next/static/chunks/*.js` chunk; search for `"FAILED","PENDING","REQUESTING"`) and is called with the swap's `events` and `expireTs`.
+On 2026-10-28 the port was checked against the extracted original: identical on 1000 recent real swaps and on hand-made edge cases. If the explorer changes, re-extract it and compare the same way.
 
-- any event name containing `FAILED` → Failed (e.g. `EXECUTED:FAILED`)
-- `CANCELLED` → Cancelled
-- `RELEASED` with `pending: true` → Releasing (destination tx still confirming)
-- `RELEASED` → Done
-- `UNLOCKED` → Unlocked (LP's target-chain lock undone; refund via a later CANCELLED)
-- past `expireTs` with no release → Expired
-- otherwise the furthest of POSTED / BONDED / LOCKED / EXECUTED
+How it works:
+
+1. Pick the furthest step: of events that have a hash or end in `ING` (not GASDROP) — a `pending` one counts as PENDING, a `:FAILED` one as FAILED — the highest in `FAILED < PENDING < REQUESTING < POSTED < BONDED < LOCKED < UNLOCKED < RELEASING < EXECUTED < CANCELLED < RELEASED`.
+2. RELEASED → **DONE** (or **RELEASED** if there is no EXECUTED yet — the recipient has the funds, the LP has not collected).
+3. CANCELLED → **CANCELLED**.
+4. EXECUTED → **RELEASING...** (or **UNLOCKED** if there is an UNLOCKED). This is checked *before* the deadline, so an executed swap past `expireTs` is still Releasing; a pending or failed release also lands here, since EXECUTED outranks both.
+5. RELEASING (the hashless request) → **RELEASING** if funds were taken on-chain (a hashed POSTED / BONDED / LOCKED / EXECUTED), else treated as REQUESTING.
+6. Past the deadline → **EXPIRED** (`EXPIRED*` if funds were taken). With nothing on-chain the deadline counts as `expireTs − 3600`.
+7. Otherwise **LOCKED** if an LP lock is outstanding, else the furthest step itself (PENDING, REQUESTING, BONDED, FAILED…).
+
+A trailing `*` means more LOCKED than RELEASED/UNLOCKED events (an LP lock outstanding); `EXPIRED*` alone means funds were taken on-chain before it expired.
+The bot keeps the `*` (support asked for it, as on the explorer), drops the `...` and title-cases the rest — "Expired*", "Releasing". In code the word and the star are separate: `status.label` ("Expired", what logic checks) and `status.star` ("*" or "", added wherever the status is displayed).
 
 What each event means, per meson.dev (`/api/endpoints/check-swap`):
 
@@ -127,9 +134,10 @@ What each event means, per meson.dev (`/api/endpoints/check-swap`):
 
 So the user's funds leave their wallet at POSTED.
 By those descriptions EXECUTED is the LP collecting, which should follow RELEASED — yet the explorer often lists only EXECUTED + RELEASED (no POSTED), so treat event order and presence as observed, not guaranteed.
-The `detail` text `deriveStatus` shows for each step uses the wording above.
+Observed by support (2026-10): status goes Pending → Releasing → Done / Cancelled / Expired; the steps seen are BONDED (Solana only), EXECUTED, RELEASING / RELEASED and CANCELLED.
+In the transaction hashes list the release is one entry: releasing (the hashless request) → releasing (confirming) (RELEASED, `pending`) → released.
 
-The bot treats only **Done** and **Cancelled** as finished (`isFinished`): nothing is left to chase. Expired and Unlocked still await a refund (CANCELLED), and Failed needs a human.
+The bot treats only **Done**, **Released** and **Cancelled** as finished (`isFinished`): nothing is left to chase. Expired, Unlocked and Failed stay watched until the team resolves them.
 
 **Expired** per the docs: the swap "cannot be executed on the Meson contract thereafter, and funds remain in `fromAddress`" — that is the never-POSTED case.
 If it *was* POSTED, the funds are in the contract until a CANCELLED returns them.
@@ -139,11 +147,17 @@ Because of that, the bot's Expired text says only **"the swap was not completed 
 Support may be able to cancel and refund it, or (if the funds are in the contract) push it to completion, so any stronger wording could be wrong.
 
 **`REQUESTING`** is a further event the explorer returns that the docs do not list — seen alone on an expired swap, with **no `hash`** (asked for, never on-chain).
-`deriveStatus` does not map it, so such a swap reads as Pending, or Expired once past `expireTs`; the details embed shows it as "no transaction yet".
+The explorer (and so the bot) shows such a swap as Requesting, or Expired once past `expireTs − 3600`; the details embed lists it as "no transaction yet".
 Any event can lack a hash, so render code must not assume one.
 
 **Failed is not a Meson status.** The docs list no `:FAILED` events; they come only from the explorer API, meaning one transaction for that step reverted.
-Whether Meson retries afterwards is undocumented.
+Per the support team, a failure is never final: a failed release (e.g. low liquidity on the destination) is retried until it goes through, and a stuck swap is resolved by the team to Done (pushed through) or Cancelled (refunded).
+The details embed therefore shows one entry per step — the successful hash, or else the latest attempt's — and never mentions failed attempts or counts them.
+Not yet checked against a real retried swap: that retries appear as repeated `RELEASED:FAILED` events.
+The heading needs no special case: the explorer ranks a failed attempt lowest, so an executed swap with failed releases shows Releasing.
+
+**`events[]` is not in time order and has no timestamps** — a cancelled swap came back as CANCELLED, EXECUTED, RELEASING (the last with no hash).
+The details embed sorts steps itself (`STEP_ORDER` in `src/render.js`), and once a swap is finished (Done, Released or Cancelled) it leaves out hashless entries like that RELEASING (a request that never became a transaction).
 
 ## Per-chain explorer links
 
@@ -161,4 +175,4 @@ Source-side events (bonded/executed) are on the **in** chain; `RELEASED` is on t
 - If the explorer bundle's preset layout changes, `refresh-presets.mjs` throws rather than writing a truncated table (it requires ≥40 chains).
 - New chains and tokens show up as `Unknown chain (0x…)` / `token#NN` until `npm run refresh-presets` is run.
 - The API never reports *when* a swap failed or was cancelled — only `released` (a real completion time) and `expireTs` (when it stops being executable).
-  Don't compute a "took X" duration from `expireTs` for a non-released swap (see `addressRowValue` in `src/render.js`); it measures time to expiry, not time to failure, and the two can differ by over an hour.
+  Don't compute a "took X" duration from `expireTs` for a non-released swap (the bot now shows only the request time anyway); it measures time to expiry, not time to failure, and the two can differ by over an hour.

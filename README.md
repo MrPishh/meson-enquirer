@@ -3,15 +3,15 @@
 Meson Enquirer is a Discord bot for a Meson support server.
 When someone opens a ticket and puts a swap ID, a transaction hash or an explorer link into the Ticket Tool form, the bot looks the swap up and posts the details straight into the ticket:
 
-- status (in progress / releasing / done / expired / cancelled / failed)
+- status — always the same one the Meson explorer shows (pending / releasing / done / cancelled / expired, …)
 - from chain and sender address, to chain and recipient address
 - amount sent → amount received, with tokens
-- every transaction hash, each linked to the right chain's explorer
-- request / completion time, and the Meson explorer link
+- one transaction hash per step (executed, releasing / released, cancelled, …), each linked to the right chain's explorer
+- request time, and the Meson explorer link
 
 It then follows the swap: the details update themselves as the status changes, and the user gets a **✅ Transaction Completed** or **↩️ Transaction Cancelled** message when it finishes.
 
-If the ticket has only a wallet address, the bot lists that wallet's recent swaps that are **not** Done or Cancelled.
+If the ticket has only a wallet address, the bot lists that wallet's recent swaps that are **not** finished (done, released or cancelled).
 
 In those same ticket channels, anyone can also run `/meson-query` with a swap ID, source/destination hash or explorer link to see one swap's details. To limit who can use it, go to **Server Settings → Integrations → (the bot)**.
 
@@ -53,7 +53,7 @@ IDs: turn on Developer Mode in Discord, then right-click the server / role → C
 | `STAFF_ROLE_IDS` | Members with any of these roles are ignored, so IDs staff paste while investigating are not looked up. (Who may use `/meson-query` is set in Discord: Server Settings → Integrations.) |
 | `AUTO_SCAN_MESSAGES` | How many messages from other bots (Ticket Tool's form) are read at the start of a ticket. The user's own messages are read for the whole ticket. |
 
-**Wallet address lookups** — a ticket with only a wallet address gets that wallet's swaps that are not Done or Cancelled. Meson cannot filter by status, so the bot reads newest-first, 20 per page, and stops at whichever limit comes first:
+**Wallet address lookups** — a ticket with only a wallet address gets that wallet's swaps that are not finished (done, released or cancelled). Meson cannot filter by status, so the bot reads newest-first, 20 per page, and stops at whichever limit comes first:
 
 | Setting | What it does |
 | --- | --- |
@@ -75,7 +75,7 @@ IDs: turn on Developer Mode in Discord, then right-click the server / role → C
 | --- | --- |
 | `MESON_TIMEOUT_SECONDS` | Give up on one request after this long. |
 | `MESON_RETRIES` | Retry a failed request this many times, waiting 1s, 2s, 4s, … between tries. |
-| `TICKET_RETRIES` / `TICKET_RETRY_SECONDS` | If it still fails, handle the whole ticket message again this many more times, this far apart. |
+| `TICKET_RETRIES` / `TICKET_RETRY_SECONDS` | If it still fails, handle the whole ticket message again this many more times, this far apart. The same applies to rebuilding a ticket after a restart. |
 
 ## Checking it works without Discord
 
@@ -104,14 +104,15 @@ Anything the explorer's search resolves, alone or buried in a sentence, backtick
 
 - **What is read:** Ticket Tool's form (the first `AUTO_SCAN_MESSAGES` bot messages) and every later message the user posts. Staff messages are ignored.
 - **One embed per swap.** Each new swap gets its own details embed; the same swap again (its ID or either hash) is ignored. With several swaps, embeds are numbered #1, #2, …
-- **Follow-ups**, as plain-text replies to the swap's embed:
-  - ⏳ "being processed" while a swap is moving normally;
-  - ✅ Transaction Completed / ↩️ Transaction Cancelled when it finishes — plus "this ticket will be closed soon" once every swap in the ticket is finished;
-  - Expired and Unlocked swaps get no ⏳; the bot keeps watching and posts ↩️ when the refund goes through. Failed swaps are left to staff.
+- **Follow-ups**, as plain-text replies to the swap's embed (numbered "Swap #n" like the embeds when there are several):
+  - ⏳ "being processed" while a swap is moving normally — deleted once the closing message is posted;
+  - ✅ Transaction Completed / ↩️ Transaction Cancelled when it finishes — plus "this ticket will be closed soon" once every swap in the ticket is finished (if another swap is added later, the earlier messages get their "Swap #1" and lose "closed soon" until it finishes too);
+  - Expired, Unlocked and Failed swaps get no ⏳; the bot keeps watching and posts ✅ / ↩️ once the team resolves them.
+- **Transaction hashes:** one entry per step, in process order, with the latest hash — failed attempts are not listed (they stay on the explorer). The release reads releasing → releasing (confirming) → released.
 - **Live updates.** The details embed is edited in place as the status changes (timing: the `SWAP_WATCH_*` settings).
 - **Wallet only.** If no swap is found and the ticket shows none yet, the bot lists the wallet's unfinished swaps (limits: the `ADDRESS_*` settings). A wallet pasted after a swap is shown is ignored.
 - **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so. The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
-- **Restarts** forget everything: swaps already posted stop updating. Run `/meson-query` for a fresh read.
+- **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, posting ✅ / ↩️, removing ⏳ — including for swaps that finished while it was down) and answers messages users sent while it was offline.
 
 ## Maintenance
 

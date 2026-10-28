@@ -80,7 +80,7 @@ export const config = {
   // Meson API requests: give up on one after this long; retry errors this many times (waits 1s, 2s, 4s, …).
   mesonTimeoutMs: number('MESON_TIMEOUT_SECONDS') * 1000,
   mesonRetries: number('MESON_RETRIES', 0),
-  // If Meson still errors after those retries, handle the whole ticket message again later.
+  // If Meson still errors after those retries, handle the whole ticket message (or a ticket's restart recovery) again later.
   ticketRetries: number('TICKET_RETRIES', 0),
   ticketRetryMs: number('TICKET_RETRY_SECONDS') * 1000,
 }
