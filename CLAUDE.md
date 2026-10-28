@@ -218,6 +218,8 @@ There is no test suite.
 
 ## Deliberate choices
 
+These were decided for the circumstances at the time, and may change — they are not permanent rules. When a task runs into one (the user asks for something it rules out, or its reason no longer seems to hold), say so and let the user decide: never silently follow it against their request, and never silently override it. The same goes for the "don't re-add it unasked" notes elsewhere in this file.
+
 - Uses `explorer.meson.fi/api/v1/*`, not the documented `relayer.meson.fi` API, whose swap endpoints carry event hashes, chains, tokens and amounts but no wallet addresses, failed attempts or pending flags — not enough for the details embed or the explorer's status. Other public Meson endpoints (limits, pool liquidity, chain RPC health) are listed in `CONTEXT.md` § Other public endpoints.
 - No API key anywhere; every endpoint used is public.
 - Addresses and hashes are shown **in full**, not truncated — staff copy them.
