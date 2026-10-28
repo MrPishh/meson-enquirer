@@ -17,9 +17,12 @@ The official docs at <https://meson.dev> describe a relayer API:
 | `GET relayer.meson.fi/api/v1/swap/<swapIdOrEncoded>` | event hashes + `expired` only |
 | `GET relayer.meson.fi/api/v1/list` | chains + token symbols/decimals/addresses |
 
-The two `swap` endpoints are **status-only**.
-They return a map like `{BONDED, LOCKED, EXECUTED, RELEASED}` of transaction hashes plus an `expired` flag — no chains, no amount, no addresses.
-So the documented API alone cannot answer a support ticket.
+When this was first written (2026-10-27) the two `swap` endpoints looked **status-only**: a map like `{BONDED, LOCKED, EXECUTED, RELEASED}` of transaction hashes plus an `expired` flag.
+Re-checked 2026-10-28: they now also carry `swap: {id, encoded, from: {amount, network, token}, to: {amount, network, token}}` — chains, tokens and amounts as display strings (`"179.276362"`, network ids like `xlayer`, `bnb`).
+Still missing: **wallet addresses** (initiator / recipient), failed attempts, pending flags and the request time — so it still cannot fill the details embed or derive the explorer's status.
+Both resolve a swap ID, an encoded swap and a source tx hash; unknown → HTTP 404 `{"error":{"code":-1,"message":"swap-not-found"}}`.
+No batching: `/swap/<id>,<id>` answers "swap-not-found".
+It is a separate host from the explorer, so it is the one usable stand-in if `explorer.meson.fi` itself is down (degraded: no addresses, no exact status).
 
 `/api/v1/list` returns 43 chains with real token symbols (it correctly reports that `usdt` on BNB displays as `BSC-USD`), but it carries **no `tokenIndex` and no `slip44`**, which are exactly the two numbers an encoded swap contains — so it cannot decode a swap, and the bot does not use it.
 
@@ -37,6 +40,9 @@ GET https://explorer.meson.fi/api/v1/swap/<swapId>
     -> {"result":{ _id, encoded, events[], srFee, lpFee, initiator,
                    fromTo[from,to], created, executed, released, batchTo }}
 
+GET https://explorer.meson.fi/api/v1/swap/<swapId>,<swapId>,…
+    -> {"result":[ <same shape as /api/v1/swap/<id>, one per swap found> ]}
+
 GET https://explorer.meson.fi/api/v1/address/<address>/swap?page=0&size=10
     -> {"result":{"list":[ <same shape as /api/v1/swap/<id>, repeated> ]}}
 ```
@@ -44,6 +50,12 @@ GET https://explorer.meson.fi/api/v1/address/<address>/swap?page=0&size=10
 `search` is the useful discovery: one endpoint resolves **all** of these to a swap ID — swap ID, encoded swap, EVM transaction hash, and Solana signature (base58).
 Verified against all four.
 Unknown input returns `{"error":{"code":-32602,"message":"Swap not found"}}` with HTTP 400 *or* 404 (`/api/v1/swap/<id>` uses 400), so error handling must look at the body, not the status.
+
+`/api/v1/swap/<id>,<id>,…` (comma-separated swap IDs, checked 2026-10-28) answers with an **array** of the same records as the single lookup, byte-for-byte: sorted by ID (not request order), duplicates merged, unknown IDs silently left out (all unknown → `[]`, HTTP 200).
+A single ID still answers with the object (or the "not found" error), not an array.
+20 IDs in one request worked (the most tested).
+This is what lets the bot re-check every watched swap in one request (`getSwaps`, `src/meson.js`).
+`/api/v1/swap?ids=…` and `/api/v1/swaps?ids=…` do **not** work — the first ignores `ids` and lists recent swaps, the second is an HTML page.
 
 `/api/v1/address/<address>/swap` returns every swap the address took part in on *either* side (sender or recipient), newest first — this is what backs the explorer's "Swaps for Address" page.
 It takes `page` (0-based) and `size`.
@@ -59,6 +71,27 @@ Limits of the address endpoint (checked against the live API and the explorer's 
 - `/api/v1/address/<address>/export` exists but answers 401 without a login.
 
 So "this wallet's unfinished swaps" can only be found by paging newest-first and filtering locally, which is why the bot bounds it by age and page count.
+
+## Other public endpoints found in the explorer's code (2026-10-28)
+
+Found by reading the explorer's own JavaScript (every chunk the public pages load), then calling each path.
+GET only — the code also has write calls (`PUT /api/v1/swap/<encoded>`, `DELETE …/swap/from-contract/<encoded>`, blacklist edits) used by Meson's staff tools; never call those.
+
+| Endpoint | Public? | What it gives |
+| --- | --- | --- |
+| `explorer…/api/v1/swap/<encoded>` | yes | The swap record by its encoded form directly (same as by swap ID) — no `search` needed |
+| `explorer…/api/v1/swap/<id>,<id>,…` | yes | Batch lookup — see above |
+| `explorer…/api/v1/premium/<address>` | yes | `{token: null}` unless the wallet has Meson premium |
+| `explorer…/api/v1/address/<a>/swap?failed=true` | answers, but **does not filter** for the public (one wallet: 20 of 20 returned, most without a failed step) — the "Failed" switch is an admin-only badge | — |
+| `explorer…/api/v1/swap?page=&size=` | yes | Newest swaps across Meson; **ignores every filter** tried (`failed`, `from`, `to`, `token`, `category`, `status`) |
+| `explorer…/api/v1/stats/*`, `…/swap/share-with/<id>`, `…/address/<a>/export` | **401** — need a Meson staff login | — |
+| Pages `/pending/bonded`, `/stats/*`, `/lp`, `/relayer/<x>`, `/pool/<x>`, `/rules`, `/blacklist`, `/premium`, `/rewards` | **staff only** — the server redirects to `/` | — |
+| `relayer.meson.fi/api/v1/limits` | yes | Per chain and token: `min` / `max` swap amount (e.g. USDC on Arbitrum 1.0 – 20000) — same list as `/list` plus limits |
+| `relayer.meson.fi/api/v1/rules` | yes | 371 fee rules (route → minimum, fee, limit, `waiveSrFee`) plus `prices` |
+| `liquidity.meson.fi/api/v1/balance?networkId=<id>&entry=pool:1` | yes | Meson's pool balance per token on one chain (`value` as a decimal string; the `_id` starts with a ms timestamp) — 0 means no liquidity there right now |
+| `rpcs.meson.fi/` | yes | `{success, data: {<chainId>: [nodes]}}` — every chain's RPC nodes as Meson sees them: `healthy`, `latency`, `lastBlockNumber`, `lastBlockTimestamp`, `gasPrice` — 44 chains, keyed by the same ids as presets (`eth`, `arb`; only `b2` is not in presets). The bot's ⚠️ network notice uses it: a chain is troubled when *no* node is healthy |
+
+Not found (404): `/api/v1/{rules,pending,lp,pool,relayer(s),rpcs,chains,list,status,health,banners,rewards,pinned-messages}` on the explorer; `/api/v1/{price,status}`, `/api/v2/swap/temp` and `abstract-initiator/<address>` (GET) on the relayer.
 
 ## The encoded swap
 

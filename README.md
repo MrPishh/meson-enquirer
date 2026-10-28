@@ -60,22 +60,34 @@ IDs: turn on Developer Mode in Discord, then right-click the server / role → C
 | `ADDRESS_LOOKBACK_DAYS` | Stop at swaps older than this many days. |
 | `ADDRESS_MAX_PAGES` | Stop after this many pages (10 = the newest 200 swaps). |
 
-**Following a swap until it finishes** — checks slow down the longer a swap stays unfinished:
+**Following a swap until it finishes** — checks slow down the longer a swap stays unfinished. All swaps that are due, across every ticket, are checked together in one request (up to 20 per request), so more open tickets do not mean more requests:
 
 | Setting | What it does |
 | --- | --- |
-| `SWAP_WATCH_INTERVAL_SECONDS` | Check this often at first. `0` = don't follow swaps (the closing note is then only posted if the swap was already finished). |
+| `SWAP_WATCH_INTERVAL_SECONDS` | Check this often at first — also how often the shared check round runs. `0` = don't follow swaps (the closing note is then only posted if the swap was already finished). |
 | `SWAP_WATCH_SLOWER_AFTER_MINUTES` / `SWAP_WATCH_SLOWER_INTERVAL_SECONDS` | From this many minutes after posting, check this often instead. |
 | `SWAP_WATCH_SLOWEST_AFTER_MINUTES` / `SWAP_WATCH_SLOWEST_INTERVAL_SECONDS` | From this many minutes (not less than the line above), check this often. |
-| `SWAP_WATCH_MAX_HOURS` | Stop following after this long. Keep it generous — a swap can sit in "Releasing" for many hours. |
+| `SWAP_WATCH_MAX_HOURS` | Stop following after this long. Keep it generous — a swap can sit in "Releasing" for many hours. Failed checks (Meson down) never stop it earlier. |
 
 **When Meson's site is down** — it sometimes serves an error page for a moment:
 
 | Setting | What it does |
 | --- | --- |
 | `MESON_TIMEOUT_SECONDS` | Give up on one request after this long. |
-| `MESON_RETRIES` | Retry a failed request this many times, waiting 1s, 2s, 4s, … between tries. |
-| `TICKET_RETRIES` / `TICKET_RETRY_SECONDS` | If it still fails, handle the whole ticket message again this many more times, this far apart. The same applies to rebuilding a ticket after a restart. |
+| `MESON_RETRIES` | Retry a failed request this many times, waiting about 1s, 2s, 4s, … between tries. |
+| `TICKET_RETRY_SECONDS` / `TICKET_RETRY_MAX_SECONDS` | If it still fails, handle the whole ticket message again until it works — it never gives up while the ticket is open (only if Discord refuses the bot's post, e.g. missing permissions, since retrying can't fix that). The first retry waits `TICKET_RETRY_SECONDS`, each later one twice as long, never more than `TICKET_RETRY_MAX_SECONDS`. The same applies to rebuilding a ticket after a restart. |
+
+**Network notice** — an unfinished swap's details show "⚠️ Network notice" while Meson reports its source or destination chain as unreachable (none of Meson's nodes for that chain healthy, per `rpcs.meson.fi`); it disappears on the next check once the chain recovers:
+
+| Setting | What it does |
+| --- | --- |
+| `CHAIN_HEALTH_CACHE_SECONDS` | Re-check chain health at most this often (one request covers every chain). `0` = no notices. |
+
+**Random spacing** — so checks don't arrive at a fixed beat:
+
+| Setting | What it does |
+| --- | --- |
+| `JITTER_PERCENT` | Every wait above (check rounds, swap re-checks, retries) is made randomly up to this many percent shorter or longer — `50` turns a 10s check into anything from 5s to 15s, averaging the same rate. `0` = exact intervals. At most 90. |
 
 ## Checking it works without Discord
 
@@ -110,8 +122,10 @@ Anything the explorer's search resolves, alone or buried in a sentence, backtick
   - Expired, Unlocked and Failed swaps get no ⏳; the bot keeps watching and posts ✅ / ↩️ once the team resolves them.
 - **Transaction hashes:** one entry per step, in process order, with the latest hash — failed attempts are not listed (they stay on the explorer). The release reads releasing → releasing (confirming) → released.
 - **Live updates.** The details embed is edited in place as the status changes (timing: the `SWAP_WATCH_*` settings).
+- **Network notice.** While a swap is unfinished and Meson can't reach its source or destination chain, the details embed says so ("⚠️ Network notice — Arbitrum is having network problems right now, which can delay this swap."). It goes away by itself once the chain is healthy again.
 - **Wallet only.** If no swap is found and the ticket shows none yet, the bot lists the wallet's unfinished swaps (limits: the `ADDRESS_*` settings). A wallet pasted after a swap is shown is ignored.
 - **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so. The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
+- **Meson down never loses a ticket.** If Meson can't be reached or rejects requests, the bot keeps retrying (the `TICKET_RETRY_*` settings) until the ticket is answered, and keeps following posted swaps through the outage — it only stops when the ticket is closed.
 - **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, posting ✅ / ↩️, removing ⏳ — including for swaps that finished while it was down) and answers messages users sent while it was offline.
 
 ## Maintenance

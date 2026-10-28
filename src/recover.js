@@ -11,18 +11,18 @@
 // L33     HISTORY_PAGES
 // L42     recoverTickets()
 // L59     claim()
-// L73     tryRecover()
-// L83   Rebuilding one ticket
-// L88     readHistory()
-// L104    recoverTicket()
+// L74     tryRecover()
+// L88   Rebuilding one ticket
+// L93     readHistory()
+// L109    recoverTicket()
 // ----- end of contents -----
 
 import { config } from './config.js'
-import { getSwap, SwapNotFound } from './meson.js'
+import { getSwaps, SWAP_BATCH_SIZE } from './meson.js'
 import { readSwapEmbed, readWalletEmbed, followUpKind } from './render.js'
 import { getTicket, rememberSwap } from './ticket-state.js'
 import { watchSwap, syncFollowUps } from './watch.js'
-import { admitMessage } from './tickets.js'
+import { admitMessage, retryDelay, worthRetrying } from './tickets.js'
 import { canReply } from './discord-util.js'
 
 // =============================================================================
@@ -54,27 +54,32 @@ export async function recoverTickets (client) {
 
 /**
  * Put a channel's recovery at the front of its ticket queue.
- * If Meson is down, the ticket is retried TICKET_RETRIES more times, TICKET_RETRY_SECONDS apart, like a ticket message — with its live messages still waiting behind.
+ * If Meson is down, the ticket is retried until it works, backing off like a ticket message (retryDelay) — with its live messages still waiting behind; it stops only when the ticket is gone or Discord refused (worthRetrying).
  */
 function claim (channel) {
   const t = getTicket(channel.id)
   const first = chain.then(() => tryRecover(t, channel))
   chain = first
   t.queue = t.queue.then(() => first).then(async (ok) => {
-    for (let attempt = 2; !ok && attempt <= config.ticketRetries + 1; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, config.ticketRetryMs))
+    for (let attempt = 1; ok === false; attempt++) {
+      const wait = retryDelay(attempt)
+      console.error(`#${channel.name}: retrying recovery in ${wait / 1000}s`)
+      await new Promise((resolve) => setTimeout(resolve, wait))
       ok = await tryRecover(t, channel)
     }
-    if (!ok) console.error(`#${channel.name}: could not recover after a restart — gave up`)
   })
 }
 
-/** One recovery attempt; false (logged) if it failed and is worth retrying. */
+/** One recovery attempt: true if done, false (logged) if it failed and is worth retrying, null if it is not worth retrying (ticket gone, Discord refused). */
 async function tryRecover (t, channel) {
   try {
     await recoverTicket(t, channel)
     return true
   } catch (err) {
+    if (!worthRetrying(channel, err)) {
+      console.error(`#${channel.name}: recovery failed, not retried — ticket gone or Discord refused —`, err.message)
+      return null
+    }
     console.error(`#${channel.name}: recovery failed —`, err.message)
     return false
   }
@@ -126,15 +131,16 @@ async function recoverTicket (t, channel) {
   const missed = history.slice(lastOwn + 1).filter((m) => m.author.id !== me)
   if (!found.length && !missed.length) return
 
-  // Re-check every swap; one Meson no longer knows is dropped (logged).
+  // Re-check every swap, together (one request per SWAP_BATCH_SIZE); one Meson no longer knows is dropped (logged).
+  const latestById = new Map()
+  for (let i = 0; i < found.length; i += SWAP_BATCH_SIZE) {
+    for (const [id, view] of await getSwaps(found.slice(i, i + SWAP_BATCH_SIZE).map((f) => f.swapId))) latestById.set(id, view)
+  }
   const swaps = []
   for (const f of found) {
-    try {
-      swaps.push({ f, latest: await getSwap(f.swapId) })
-    } catch (err) {
-      if (!(err instanceof SwapNotFound)) throw err
-      console.error(`#${channel.name}: ${f.swapId} no longer found on Meson — not recovered`)
-    }
+    const latest = latestById.get(f.swapId.toLowerCase())
+    if (latest) swaps.push({ f, latest })
+    else console.error(`#${channel.name}: ${f.swapId} no longer found on Meson — not recovered`)
   }
 
   // Commit: the ticket as it was before the restart.

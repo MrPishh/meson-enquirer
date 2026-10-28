@@ -36,17 +36,17 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 | --- | --- |
 | `src/index.js` | Entry point only: Discord client, event wiring, startup log + `recoverTickets`, crash guards (client `error`, `unhandledRejection`) |
 | `src/config.js` | Every `.env` setting, parsed once → `config` |
-| `src/tickets.js` | Ticket auto-reply: `onTicketMessage` → `admitMessage` → `handleTicketMessage` → `postSwap` / `postWalletSwaps` |
-| `src/watch.js` | Follow-up after a swap is posted: ⏳ / closing message, background re-checks, embed edits; `syncFollowUps` keeps earlier ⏳ / closing messages labelled |
+| `src/tickets.js` | Ticket auto-reply: `onTicketMessage` → `admitMessage` → `handleTicketMessage` → `postSwap` / `postWalletSwaps`; retrying a message while Meson is down (`queueMessage`, `retryDelay`, `worthRetrying`) |
+| `src/watch.js` | Follow-up after a swap is posted: ⏳ / closing message, the shared batched check round (`runRound`), embed edits; `syncFollowUps` keeps earlier ⏳ / closing messages labelled |
 | `src/ticket-state.js` | Per-ticket memory: swaps shown, known IDs/hashes, serial numbers, "closing soon" rule |
 | `src/recover.js` | Restart recovery: on startup rebuilds every ticket from the bot's own messages, resumes its watches, handles messages missed while down |
 | `src/commands.js` | Slash command definitions (`COMMANDS`) + handlers |
 | `src/discord-util.js` | `canReply` (the "is this a ticket?" check), `isStaff`, `messageText`, `quietReply`, `CHANNEL_GONE` |
-| `src/meson.js` | Meson API calls, status derivation, swap → display object, wallet listing |
+| `src/meson.js` | Meson API calls (incl. batched `getSwaps`, `jitter`), chain health for the ⚠️ network notice, status derivation, swap → display object, wallet listing |
 | `src/extract.js` | Finds swap IDs / hashes / links / wallet addresses in free text, in priority order |
 | `src/render.js` | Every embed and message text the bot posts, and the readers that recognise them again after a restart |
 | `src/decode.js` | 32-byte encoded-swap decoder + amount formatting |
-| `src/presets.js` | Chain / token names and per-chain explorer URLs |
+| `src/presets.js` | Chain / token names, Meson network IDs (`chainId`) and per-chain explorer URLs |
 | `src/presets.json` | **Generated** by `npm run refresh-presets` — never hand-edit |
 | `scripts/register-commands.mjs` | `npm run register` — sends `COMMANDS` (from `src/commands.js`) to Discord |
 | `scripts/lookup.mjs` | `npm run lookup` — one swap from the terminal (smoke test) |
@@ -68,8 +68,10 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 | Change what counts as a swap ID / encoding / hash / wallet | `extractCandidates`, `extractAddressCandidates` in `src/extract.js` |
 | Change what happens when a ticket message arrives | `handleTicketMessage` in `src/tickets.js` |
 | Change the wallet fallback (which swaps, how far back) | `postWalletSwaps` (`src/tickets.js`), `listUnfinishedSwapsForAddress` (`src/meson.js`), `buildUnfinishedAddressEmbeds` (`src/render.js`) |
-| Change follow-ups, polling speed, when watching stops | `watchSwap`, `watchDelay` in `src/watch.js` |
+| Change follow-ups, polling speed, when watching stops | `watchSwap`, `watchDelay`, `runRound` (the shared check round) in `src/watch.js` |
+| Change what happens while Meson is down (retries, back-off, random spacing) | `getJson` (quick retries), `jitter` in `src/meson.js`; `queueMessage`, `retryDelay`, `worthRetrying` in `src/tickets.js`; `claim` in `src/recover.js` (`MESON_*`, `TICKET_RETRY_*`, `JITTER_PERCENT`) |
 | Change how a status is worked out | `explorerStatus` (port of the explorer's — re-port, don't tune) and `deriveStatus` in `src/meson.js` (+ `CONTEXT.md` § Status derivation) |
+| Change the ⚠️ network notice (when it shows, wording) | `troubledChainIds`, `addChainHealth` in `src/meson.js` (`CHAIN_HEALTH_CACHE_SECONDS`); `buildChainNotice` in `src/render.js` |
 | Change the transaction hashes list (step order, names, what is hidden) | `STEP_ORDER`, `txSteps`, `txValue` in `src/render.js` |
 | Change what happens after a restart | `recoverTicket` in `src/recover.js`; the readers `readSwapEmbed`, `readWalletEmbed`, `followUpKind` in `src/render.js` (keep them in step with the message builders) |
 | Change serial numbers / "ticket will be closed soon" | `serialOf`, `outcomeOpts` in `src/ticket-state.js`; re-rendering earlier ⏳ / closing messages: `syncFollowUps` in `src/watch.js` |
@@ -94,7 +96,7 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 5. `postSwap` → details embed (reply to the user's message, or plain send for the form).
    From the 2nd swap on, embeds, ⏳ lines and closing messages carry `#n` — #1's embed, ⏳ and closing message are re-rendered, so every swap's messages are always labelled alike.
    Each new swap also re-renders the earlier closing messages (`syncFollowUps`, `src/watch.js`): "ticket will be closed soon" is dropped from them while the new swap is open.
-   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ (only if `status.ok`), then background re-checks that edit the embed on change and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ line.
+   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ (only if `status.ok`), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ line.
 
 ### Statuses
 
@@ -154,7 +156,10 @@ There is no test suite.
 - **Amounts are `BigInt` in 6-decimal units**, for every token including BTC. Never convert to `Number` — format with `formatAmount` (`src/decode.js`).
 - **Upstream reports "not found" as HTTP 400 *or* 404 with an `error` body.** `getJson` checks the body, not the status code.
 - **Meson's host has hiccups: it can briefly return an HTML error page, even with HTTP 200, on a correct API path.** This happened in production (a ticket went unanswered).
-  `getJson` therefore retries network errors, 5xx *and* non-JSON bodies (`MESON_RETRIES`, waiting 1s, 2s, 4s), and `queueMessage` retries a whole ticket message `TICKET_RETRIES` more times, `TICKET_RETRY_SECONDS` apart, if Meson still errors.
+  `getJson` therefore retries network errors, 429, 5xx *and* non-JSON bodies (`MESON_RETRIES`, waiting about 1s, 2s, 4s), and `queueMessage` (and restart recovery) retries a whole ticket message **until it works** if Meson still errors — waiting `TICKET_RETRY_SECONDS`, doubling up to `TICKET_RETRY_MAX_SECONDS` (`retryDelay`); it stops only when the ticket is gone or Discord refused the bot's request (4xx, e.g. Missing Permissions) — `worthRetrying`.
+  Never add a give-up limit: a ticket must always be answered, however late. The same goes for `watchSwap`: a failed re-check never ends a watch.
+  Swaps are always re-checked in batches (`getSwaps`, also in restart recovery), never one request per swap — keep it that way.
+  Every repeated wait goes through `jitter` (`src/meson.js`, `JITTER_PERCENT`) so requests never come at a fixed beat — use it for any new timer that calls Meson.
   Only "not found" is final.
   Don't make non-JSON "fatal" again.
 - **An unknown or malformed wallet address is not an error** — the address endpoint returns an empty list (HTTP 200).
@@ -171,7 +176,8 @@ There is no test suite.
 - **Replies use `quietReply`** (no ping; posts normally if the replied-to message was deleted). Use it for any new reply.
 - **Only the request time is shown** — on the details embed and in the wallet list. Expiry, completion time and "took X" were removed at the support team's request; don't re-add them unasked.
   Never derive a "took X" duration from `expireTs` — the API has no failure timestamp and `expireTs` can be over an hour off.
-- **The address endpoint has no total count and `size` ≤ 20.** `list.length === size` is the only "maybe more" signal; it has no status or date filter (checked), so filtering is done locally and bounded by `ADDRESS_LOOKBACK_DAYS` / `ADDRESS_MAX_PAGES`.
+- **The address endpoint has no total count and `size` ≤ 20.** `list.length === size` is the only "maybe more" signal; it has no status or date filter (checked — `failed=true` is accepted but only filters for Meson's admins), so filtering is done locally and bounded by `ADDRESS_LOOKBACK_DAYS` / `ADDRESS_MAX_PAGES`.
+- **The ⚠️ network notice is only a hint.** `fetchChainHealth` swallows every error (logged) and returns "no known problems"; a health failure must never fail or delay a swap lookup. One cached request (`CHAIN_HEALTH_CACHE_SECONDS`) serves every lookup.
 - **Releasing never becomes Expired** (the explorer checks EXECUTED before the deadline), so a stuck release is ended only by `SWAP_WATCH_MAX_HOURS` — keep it generous.
 - **Never publish secrets.** `.env` (bot token, server/channel/role IDs) and every `.env.*` variant except `.env.example` are git-ignored — keep it that way, keep the token and every ID out of `.env.example` (only non-secret values like `AUTO_SCAN_MESSAGES=6`), and never paste real IDs or tokens into code or docs.
   Throwaway test scripts go in a temp folder, not the project.
@@ -180,7 +186,7 @@ There is no test suite.
 
 ## Deliberate choices
 
-- Uses `explorer.meson.fi/api/v1/*`, not the documented `relayer.meson.fi` API, whose swap endpoints return status only — no chains, amount or addresses. See `CONTEXT.md`.
+- Uses `explorer.meson.fi/api/v1/*`, not the documented `relayer.meson.fi` API, whose swap endpoints carry event hashes, chains, tokens and amounts but no wallet addresses, failed attempts or pending flags — not enough for the details embed or the explorer's status. Other public Meson endpoints (limits, pool liquidity, chain RPC health) are listed in `CONTEXT.md` § Other public endpoints.
 - No API key anywhere; every endpoint used is public.
 - Addresses and hashes are shown **in full**, not truncated — staff copy them.
 - The details embed is edited in place (silent); the closing message is a new reply (notifies the user). Embeds are never deleted and re-posted.

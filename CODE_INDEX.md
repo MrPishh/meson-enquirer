@@ -19,18 +19,18 @@
 | File | Lines | Sections (start line) | Purpose |
 | --- | --- | --- | --- |
 | `src/commands.js` | 93 | Definitions (19) · Handlers (39) | Slash commands: definitions (registered by scripts/register-commands.mjs) and their handlers. |
-| `src/config.js` | 90 | Settings (17) | Every .env setting, parsed once. |
+| `src/config.js` | 100 | Settings (17) | Every .env setting, parsed once. |
 | `src/decode.js` | 75 | Decoding (31) · Formatting (55) | Decoder for Meson's 32-byte "encoded swap". |
 | `src/discord-util.js` | 70 | Permission & member checks (18) · Message helpers (47) | Small Discord helpers shared by the ticket flow and the slash command. |
 | `src/extract.js` | 152 | Shared (28) · Swap identifiers (53) · Wallet addresses (107) | Pulls a Meson-lookupable identifier out of free-form text. |
 | `src/index.js` | 82 | Client (30) · Events (43) · Login (77) | Meson Enquirer — entry point. |
-| `src/meson.js` | 328 | Upstream HTTP (43) · Status (115) · Swap view (191) · Single swap (250) · Wallet swaps (268) | Meson swap lookup. |
-| `src/presets.js` | 89 | Chain & token names (24) · Explorer URLs (54) | Chain and token lookups for decoded swaps. |
-| `src/recover.js` | 169 | Startup (28) · Rebuilding one ticket (83) | Restart recovery: rebuilds every open ticket from the bot's own messages in it, so a restart drops no follow-up. |
-| `src/render.js` | 348 | Shared helpers (42) · Swap details embed (71) · Plain-text messages (166) · Wallet embeds (223) · Not-found embed (307) · Recognising our own messages (327) | Everything the bot posts: swap details embed, wallet (unfinished swaps) embeds, the plain-text ⏳ / closing / "couldn't find" messages, and the /meson-query n… |
+| `src/meson.js` | 419 | Upstream HTTP (51) · Status (126) · Swap view (202) · Chain health (265) · Single swap (319) · Wallet swaps (359) | Meson swap lookup. |
+| `src/presets.js` | 95 | Chain & token names (25) · Explorer URLs (60) | Chain and token lookups for decoded swaps. |
+| `src/recover.js` | 175 | Startup (28) · Rebuilding one ticket (88) | Restart recovery: rebuilds every open ticket from the bot's own messages in it, so a restart drops no follow-up. |
+| `src/render.js` | 359 | Shared helpers (43) · Swap details embed (72) · Plain-text messages (177) · Wallet embeds (234) · Not-found embed (318) · Recognising our own messages (338) | Everything the bot posts: swap details embed, wallet (unfinished swaps) embeds, the plain-text ⏳ / closing / "couldn't find" messages, and the /meson-query n… |
 | `src/ticket-state.js` | 83 | State (33) · Helpers (61) | Per-ticket memory. |
-| `src/tickets.js` | 182 | Entry point (29) · Message handling (82) · Posting (134) | Ticket auto-reply: reads Ticket Tool's form embed and the user's later messages, and posts each new swap they name (then hands it to watchSwap). |
-| `src/watch.js` | 167 | Polling (32) · Watch lifecycle (53) | Keeps a posted swap current until it finishes. |
+| `src/tickets.js` | 193 | Entry point (30) · Message handling (93) · Posting (145) | Ticket auto-reply: reads Ticket Tool's form embed and the user's later messages, and posts each new swap they name (then hands it to watchSwap). |
+| `src/watch.js` | 226 | Polling (38) · Watch lifecycle (151) | Keeps a posted swap current until it finishes. |
 | `scripts/build-index.mjs` | 332 | Parsing (49) · Contents block (130) · CODE_INDEX.md (166) · Main (265) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, and CODE_INDEX.md (events, slash commands, .env setting… |
 | `scripts/index-hook.mjs` | 19 | — | Claude Code PostToolUse hook (.claude/settings.json): after an Edit/Write to a .js/.mjs file under src/ or scripts/, rebuild the Contents blocks and CODE_IND… |
 | `scripts/lookup-address.mjs` | 47 | — | CLI: list a wallet's swaps (one page, or the ticket's unfinished view). |
@@ -78,8 +78,10 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | `SWAP_WATCH_MAX_HOURS` | `watchMaxMs` | `src/config.js:78` |
 | `MESON_TIMEOUT_SECONDS` | `mesonTimeoutMs` | `src/config.js:81` |
 | `MESON_RETRIES` | `mesonRetries` | `src/config.js:82` |
-| `TICKET_RETRIES` | `ticketRetries` | `src/config.js:84` |
-| `TICKET_RETRY_SECONDS` | `ticketRetryMs` | `src/config.js:85` |
+| `TICKET_RETRY_SECONDS` | `ticketRetryMs` | `src/config.js:84` |
+| `TICKET_RETRY_MAX_SECONDS` | `ticketRetryMaxMs` | `src/config.js:85` |
+| `CHAIN_HEALTH_CACHE_SECONDS` | `chainHealthMs` | `src/config.js:88` |
+| `JITTER_PERCENT` | `jitterPercent` | `src/config.js:91` |
 
 ## Functions
 
@@ -133,30 +135,36 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `SwapNotFound` `export` | Upstream HTTP | `src/meson.js:54` | Thrown when the upstream clearly says "no such swap". |
-| `getJson` | Upstream HTTP | `src/meson.js:66` | GET an explorer API URL. |
-| `resolveSwapId` | Upstream HTTP | `src/meson.js:101` | Resolve any user-supplied identifier to a Meson swap ID. |
-| `fetchSwap` | Upstream HTTP | `src/meson.js:109` | Fetch the raw swap record for a known swap ID. |
-| `explorerStatus` | Status | `src/meson.js:126` | The status the Meson explorer shows for a swap — a line-for-line port of its own function (explorer bundle, called with the swap's events and `expireTs`), so… |
-| `deriveStatus` | Status | `src/meson.js:156` | Derive the display status: the explorer's own label (explorerStatus), title-cased, plus what the bot does with it. |
-| `statusFor` | Status | `src/meson.js:164` | What the bot does with each explorer label (without its `*` / `...`). |
-| `isFinished` `export` | Status | `src/meson.js:189` | Done, Released or Cancelled: nothing left to chase (a cancel already returned the funds). |
-| `toDate` | Swap view | `src/meson.js:195` |  |
-| `toSwapView` | Swap view | `src/meson.js:198` | Turn one raw swap record (from either endpoint — same shape) into the flat, display-ready view. |
-| `lookupSwap` `export` | Single swap | `src/meson.js:259` | Look up a swap from anything a user might paste — swap ID, encoded swap, source or destination tx hash, Solana signature — and return a flat, display-ready o… |
-| `getSwap` `export` | Single swap | `src/meson.js:264` | A swap by its known swap ID (one request — what the background re-checks use). |
-| `listSwapsForAddress` `export` | Wallet swaps | `src/meson.js:279` | List the swaps an address took part in (as either sender or recipient), newest first, as the explorer's "Swaps for Address" page shows them. |
-| `listUnfinishedSwapsForAddress` `export` | Wallet swaps | `src/meson.js:311` | An address's swaps that are not finished (Done, Released or Cancelled — `isFinished`) within the last `maxAgeDays` (both are finished — a cancel already retu… |
+| `jitter` `export` | Upstream HTTP | `src/meson.js:62` | A wait of about `ms`, randomly up to JITTER_PERCENT shorter or longer — every repeated request to Meson goes through it, so they never come at a fixed beat w… |
+| `SwapNotFound` `export` | Upstream HTTP | `src/meson.js:65` | Thrown when the upstream clearly says "no such swap". |
+| `getJson` | Upstream HTTP | `src/meson.js:77` | GET an explorer API URL. |
+| `resolveSwapId` | Upstream HTTP | `src/meson.js:112` | Resolve any user-supplied identifier to a Meson swap ID. |
+| `fetchSwap` | Upstream HTTP | `src/meson.js:120` | Fetch the raw swap record for a known swap ID. |
+| `explorerStatus` | Status | `src/meson.js:137` | The status the Meson explorer shows for a swap — a line-for-line port of its own function (explorer bundle, called with the swap's events and `expireTs`), so… |
+| `deriveStatus` | Status | `src/meson.js:167` | Derive the display status: the explorer's own label (explorerStatus), title-cased, plus what the bot does with it. |
+| `statusFor` | Status | `src/meson.js:175` | What the bot does with each explorer label (without its `*` / `...`). |
+| `isFinished` `export` | Status | `src/meson.js:200` | Done, Released or Cancelled: nothing left to chase (a cancel already returned the funds). |
+| `toDate` | Swap view | `src/meson.js:206` |  |
+| `toSwapView` | Swap view | `src/meson.js:209` | Turn one raw swap record (from either endpoint — same shape) into the flat, display-ready view. |
+| `troubledChainIds` | Chain health | `src/meson.js:279` | Chain IDs (e.g. |
+| `fetchChainHealth` | Chain health | `src/meson.js:287` | One chain health request; a failure is logged and counts as "no known problems" until the next check is due. |
+| `addChainHealth` | Chain health | `src/meson.js:310` | Fill in `troubledChains` (display names) on every unfinished swap view whose source or destination chain is troubled. |
+| `lookupSwap` `export` | Single swap | `src/meson.js:328` | Look up a swap from anything a user might paste — swap ID, encoded swap, source or destination tx hash, Solana signature — and return a flat, display-ready o… |
+| `getSwap` | Single swap | `src/meson.js:333` | A swap by its known swap ID (one request — for a single lookup; re-checks of several swaps use getSwaps). |
+| `getSwaps` `export` | Single swap | `src/meson.js:349` | Several swaps by known swap ID in one request (what the background re-checks and restart recovery use), keyed by lower-case swap ID. |
+| `listSwapsForAddress` `export` | Wallet swaps | `src/meson.js:370` | List the swaps an address took part in (as either sender or recipient), newest first, as the explorer's "Swaps for Address" page shows them. |
+| `listUnfinishedSwapsForAddress` `export` | Wallet swaps | `src/meson.js:402` | An address's swaps that are not finished (Done, Released or Cancelled — `isFinished`) within the last `maxAgeDays` (both are finished — a cancel already retu… |
 
 ### src/presets.js
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `getChain` | Chain & token names | `src/presets.js:39` | The presets.json entry for a chain, or null if unknown. |
-| `chainName` `export` | Chain & token names | `src/presets.js:45` | Human chain name, falling back to the raw id so output is never blank. |
-| `tokenSymbol` `export` | Chain & token names | `src/presets.js:50` | Token symbol for a chain-scoped Meson token index. |
-| `txUrl` `export` | Explorer URLs | `src/presets.js:73` | A block-explorer URL for a transaction on the given chain, or null. |
-| `addressUrl` `export` | Explorer URLs | `src/presets.js:82` | A block-explorer URL for an address on the given chain, or null. |
+| `getChain` | Chain & token names | `src/presets.js:40` | The presets.json entry for a chain, or null if unknown. |
+| `chainName` `export` | Chain & token names | `src/presets.js:46` | Human chain name, falling back to the raw id so output is never blank. |
+| `chainId` `export` | Chain & token names | `src/presets.js:51` | Meson's network ID for a chain (e.g. |
+| `tokenSymbol` `export` | Chain & token names | `src/presets.js:56` | Token symbol for a chain-scoped Meson token index. |
+| `txUrl` `export` | Explorer URLs | `src/presets.js:79` | A block-explorer URL for a transaction on the given chain, or null. |
+| `addressUrl` `export` | Explorer URLs | `src/presets.js:88` | A block-explorer URL for an address on the given chain, or null. |
 
 ### src/recover.js
 
@@ -164,31 +172,32 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | --- | --- | --- | --- |
 | `recoverTickets` `export` | Startup | `src/recover.js:42` | ClientReady entry point: claim every ticket channel's queue, then recover them one by one. |
 | `claim` | Startup | `src/recover.js:59` | Put a channel's recovery at the front of its ticket queue. |
-| `tryRecover` | Startup | `src/recover.js:73` | One recovery attempt; false (logged) if it failed and is worth retrying. |
-| `readHistory` | Rebuilding one ticket | `src/recover.js:88` | The channel's messages, oldest first (up to HISTORY_PAGES × 100). |
-| `recoverTicket` | Rebuilding one ticket | `src/recover.js:104` | Rebuild a ticket from its history and resume it. |
+| `tryRecover` | Startup | `src/recover.js:74` | One recovery attempt: true if done, false (logged) if it failed and is worth retrying, null if it is not worth retrying (ticket gone, Discord refused). |
+| `readHistory` | Rebuilding one ticket | `src/recover.js:93` | The channel's messages, oldest first (up to HISTORY_PAGES × 100). |
+| `recoverTicket` | Rebuilding one ticket | `src/recover.js:109` | Rebuild a ticket from its history and resume it. |
 
 ### src/render.js
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `ts` | Shared helpers | `src/render.js:54` | Discord renders <t:unix:f> in the reader's own timezone. |
-| `code` | Shared helpers | `src/render.js:57` | Inline-code a value (or an em dash if empty). |
-| `codeList` | Shared helpers | `src/render.js:60` | Inline-code values, comma separated; past `max` the rest are only counted, so a long paste cannot push a message over Discord's length limit. |
-| `statusColor` | Shared helpers | `src/render.js:66` | Embed colour for a status: red if not ok, green if done, amber while moving. |
-| `sideValue` | Swap details embed | `src/render.js:76` | "Solana" + address, as one embed field value (amount and token are in the Amount field). |
-| `txSteps` | Swap details embed | `src/render.js:95` | One entry per step (posted, bonded, …) for the transaction hashes field: its successful transaction, or — while it has only failed — its latest attempt, with… |
-| `txValue` | Swap details embed | `src/render.js:113` | The source-side and destination-side transaction hashes, with links. |
-| `buildSwapEmbed` `export` | Swap details embed | `src/render.js:140` | The swap details embed — posted in tickets and by /meson-query. |
-| `buildProcessingMessage` `export` | Plain-text messages | `src/render.js:174` | Plain-text reply to a new swap's details while it is still moving normally (status.ok, not finished). |
-| `buildOutcomeMessage` `export` | Plain-text messages | `src/render.js:191` | The closing note posted (as plain text, not an embed) as a reply to the swap details once a swap has finished (Done / Released → ✅, Cancelled → ↩️), or null … |
-| `buildSwapNotFoundMessage` `export` | Plain-text messages | `src/render.js:215` | Plain-text reply when a user pastes swap-shaped text that Meson does not know. |
-| `addressRowValue` | Wallet embeds | `src/render.js:240` | One row of an address's swap list: link, route, amount, request time. |
-| `buildUnfinishedAddressEmbeds` `export` | Wallet embeds | `src/render.js:263` | Posted by ticket auto-detect when the ticket has a wallet address but no swap ID or hash: only that wallet's swaps that are not finished (Done, Released or C… |
-| `buildNotFoundEmbed` `export` | Not-found embed | `src/render.js:312` | Shown when nothing lookupable was found or the swap does not exist. |
-| `readSwapEmbed` `export` | Recognising our own messages | `src/render.js:334` | The swap ID of a swap details embed (buildSwapEmbed: title "Meson swap …", URL = the swap's explorer link), or null for any other embed. |
-| `readWalletEmbed` `export` | Recognising our own messages | `src/render.js:340` | The wallet address of a wallet embed (buildUnfinishedAddressEmbeds: URL = the address's explorer page), or null. |
-| `followUpKind` `export` | Recognising our own messages | `src/render.js:343` | Which follow-up a plain-text message is: ⏳ (buildProcessingMessage) or ✅ / ↩️ (buildOutcomeMessage) — or null. |
+| `ts` | Shared helpers | `src/render.js:55` | Discord renders <t:unix:f> in the reader's own timezone. |
+| `code` | Shared helpers | `src/render.js:58` | Inline-code a value (or an em dash if empty). |
+| `codeList` | Shared helpers | `src/render.js:61` | Inline-code values, comma separated; past `max` the rest are only counted, so a long paste cannot push a message over Discord's length limit. |
+| `statusColor` | Shared helpers | `src/render.js:67` | Embed colour for a status: red if not ok, green if done, amber while moving. |
+| `sideValue` | Swap details embed | `src/render.js:77` | "Solana" + address, as one embed field value (amount and token are in the Amount field). |
+| `txSteps` | Swap details embed | `src/render.js:96` | One entry per step (posted, bonded, …) for the transaction hashes field: its successful transaction, or — while it has only failed — its latest attempt, with… |
+| `txValue` | Swap details embed | `src/render.js:114` | The source-side and destination-side transaction hashes, with links. |
+| `buildChainNotice` `export` | Swap details embed | `src/render.js:137` | The "⚠️ Network notice" text: which of the swap's chains Meson cannot reach right now. |
+| `buildSwapEmbed` `export` | Swap details embed | `src/render.js:147` | The swap details embed — posted in tickets and by /meson-query. |
+| `buildProcessingMessage` `export` | Plain-text messages | `src/render.js:185` | Plain-text reply to a new swap's details while it is still moving normally (status.ok, not finished). |
+| `buildOutcomeMessage` `export` | Plain-text messages | `src/render.js:202` | The closing note posted (as plain text, not an embed) as a reply to the swap details once a swap has finished (Done / Released → ✅, Cancelled → ↩️), or null … |
+| `buildSwapNotFoundMessage` `export` | Plain-text messages | `src/render.js:226` | Plain-text reply when a user pastes swap-shaped text that Meson does not know. |
+| `addressRowValue` | Wallet embeds | `src/render.js:251` | One row of an address's swap list: link, route, amount, request time. |
+| `buildUnfinishedAddressEmbeds` `export` | Wallet embeds | `src/render.js:274` | Posted by ticket auto-detect when the ticket has a wallet address but no swap ID or hash: only that wallet's swaps that are not finished (Done, Released or C… |
+| `buildNotFoundEmbed` `export` | Not-found embed | `src/render.js:323` | Shown when nothing lookupable was found or the swap does not exist. |
+| `readSwapEmbed` `export` | Recognising our own messages | `src/render.js:345` | The swap ID of a swap details embed (buildSwapEmbed: title "Meson swap …", URL = the swap's explorer link), or null for any other embed. |
+| `readWalletEmbed` `export` | Recognising our own messages | `src/render.js:351` | The wallet address of a wallet embed (buildUnfinishedAddressEmbeds: URL = the address's explorer page), or null. |
+| `followUpKind` `export` | Recognising our own messages | `src/render.js:354` | Which follow-up a plain-text message is: ⏳ (buildProcessingMessage) or ✅ / ↩️ (buildOutcomeMessage) — or null. |
 
 ### src/ticket-state.js
 
@@ -204,23 +213,30 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `onTicketMessage` `export` | Entry point | `src/tickets.js:38` | MessageCreate entry point. |
-| `admitMessage` `export` | Entry point | `src/tickets.js:47` | Queue one ticket message if it is worth reading — the filter shared by live messages and those missed while the bot was down (recover.js). |
-| `queueMessage` | Entry point | `src/tickets.js:71` | Queue a message for its ticket. |
-| `handleTicketMessage` | Message handling | `src/tickets.js:89` | Look up every swap-shaped value in one message (priority order), post each new swap, then fall back to the wallet or a "couldn't find" reply. |
-| `postSwap` | Posting | `src/tickets.js:141` | Post a newly found swap — as a reply when the user pasted it mid-ticket, so it is clear what the bot is answering. |
-| `postWalletSwaps` | Posting | `src/tickets.js:161` | List a wallet's swaps that are not finished (Done, Released or Cancelled), one embed per message (Discord's 6000-character cap covers all of a message's embe… |
+| `onTicketMessage` `export` | Entry point | `src/tickets.js:39` | MessageCreate entry point. |
+| `admitMessage` `export` | Entry point | `src/tickets.js:48` | Queue one ticket message if it is worth reading — the filter shared by live messages and those missed while the bot was down (recover.js). |
+| `retryDelay` `export` | Entry point | `src/tickets.js:64` | The wait before retry number `attempt` (1 = first retry): TICKET_RETRY_SECONDS, doubling each time, capped at TICKET_RETRY_MAX_SECONDS, then randomised (jitt… |
+| `worthRetrying` `export` | Entry point | `src/tickets.js:70` | Whether a failed ticket message (or recovery) is worth trying again: Meson errors always are, however long the outage. |
+| `queueMessage` | Entry point | `src/tickets.js:79` | Queue a message for its ticket. |
+| `handleTicketMessage` | Message handling | `src/tickets.js:100` | Look up every swap-shaped value in one message (priority order), post each new swap, then fall back to the wallet or a "couldn't find" reply. |
+| `postSwap` | Posting | `src/tickets.js:152` | Post a newly found swap — as a reply when the user pasted it mid-ticket, so it is clear what the bot is answering. |
+| `postWalletSwaps` | Posting | `src/tickets.js:172` | List a wallet's swaps that are not finished (Done, Released or Cancelled), one embed per message (Discord's 6000-character cap covers all of a message's embe… |
 
 ### src/watch.js
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `fingerprint` | Polling | `src/watch.js:43` | Anything that should cause an embed edit: status plus each event's state. |
-| `watchDelay` | Polling | `src/watch.js:47` | Poll fast while a swap is likely to move, then back off (the SWAP_WATCH_* settings). |
-| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:58` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
-| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:67` | Bring a swap's ⏳ and closing message in line with the ticket as it is now: its "Swap #n", and whether "ticket will be closed soon" still holds. |
-| `watchSwap` `export` | Watch lifecycle | `src/watch.js:87` | Post the first follow-up for a just-posted swap and, if it is not finished, start re-checking it. |
-| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:162` | Cancel every watch in a channel — called when a ticket channel is deleted. |
+| `fingerprint` | Polling | `src/watch.js:53` | Anything that should cause an embed edit: status, each event's state, and the network notice. |
+| `watchDelay` | Polling | `src/watch.js:57` | Poll fast while a swap is likely to move, then back off (the SWAP_WATCH_* settings). |
+| `nextDue` | Polling | `src/watch.js:67` | When a just-checked swap is next due. |
+| `scheduleRound` | Polling | `src/watch.js:70` | Plan the next check round, unless one is planned or running, or nothing is watched. |
+| `runRound` | Polling | `src/watch.js:79` | One check round: every watched swap that is due is re-checked together — one Meson request per SWAP_BATCH_SIZE swaps (getSwaps), however many tickets they ar… |
+| `applyCheck` | Polling | `src/watch.js:116` | Act on one fresh look at a watched swap: edit the embed if it changed, post the closing message and stop once it is finished. |
+| `stopWatch` | Polling | `src/watch.js:146` | End one watch (logged). |
+| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:156` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
+| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:165` | Bring a swap's ⏳ and closing message in line with the ticket as it is now: its "Swap #n", and whether "ticket will be closed soon" still holds. |
+| `watchSwap` `export` | Watch lifecycle | `src/watch.js:185` | Post the first follow-up for a just-posted swap and, if it is not finished, start re-checking it. |
+| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:221` | Cancel every watch in a channel — called when a ticket channel is deleted. |
 
 ### scripts/build-index.mjs
 
@@ -306,19 +322,21 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Constant | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `EXPLORER` | Upstream HTTP | `src/meson.js:48` | Base URL of the Meson explorer — every API call and explorer link uses it. |
-| `UA` | Upstream HTTP | `src/meson.js:51` | User-Agent sent with every request. |
-| `EXPLORER_STEP_RANK` | Status | `src/meson.js:120` | Step rank used by the explorer to find a swap's furthest step — copied from its bundle, order matters. |
-| `MAX_PAGE_SIZE` | Wallet swaps | `src/meson.js:297` | The address endpoint rejects anything larger ("Size cannot exceed 20"). |
+| `EXPLORER` | Upstream HTTP | `src/meson.js:56` | Base URL of the Meson explorer — every API call and explorer link uses it. |
+| `UA` | Upstream HTTP | `src/meson.js:59` | User-Agent sent with every request. |
+| `EXPLORER_STEP_RANK` | Status | `src/meson.js:131` | Step rank used by the explorer to find a swap's furthest step — copied from its bundle, order matters. |
+| `RPCS` | Chain health | `src/meson.js:270` | Meson's own status of every chain's RPC nodes (public, no key): `{data: {<chainId>: [{healthy, latency, …}]}}`. |
+| `SWAP_BATCH_SIZE` `export` | Single swap | `src/meson.js:340` | Most swap IDs sent in one getSwaps request (20 checked against the live API, 2026-10-28). |
+| `MAX_PAGE_SIZE` | Wallet swaps | `src/meson.js:388` | The address endpoint rejects anything larger ("Size cannot exceed 20"). |
 
 ### src/presets.js
 
 | Constant | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `generatedAt` `export` | Chain & token names | `src/presets.js:29` | When presets.json was generated — logged at startup. |
-| `chainCount` `export` | Chain & token names | `src/presets.js:32` | Number of known chains — logged at startup. |
-| `TX_PATH` | Explorer URLs | `src/presets.js:59` | Path segment each explorer uses for a transaction. |
-| `TX_SUFFIX` | Explorer URLs | `src/presets.js:68` | Explorers that need a query string to pin the network. |
+| `generatedAt` `export` | Chain & token names | `src/presets.js:30` | When presets.json was generated — logged at startup. |
+| `chainCount` `export` | Chain & token names | `src/presets.js:33` | Number of known chains — logged at startup. |
+| `TX_PATH` | Explorer URLs | `src/presets.js:65` | Path segment each explorer uses for a transaction. |
+| `TX_SUFFIX` | Explorer URLs | `src/presets.js:74` | Explorers that need a query string to pin the network. |
 
 ### src/recover.js
 
@@ -330,13 +348,13 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Constant | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `COLOR` | Shared helpers | `src/render.js:47` | Embed side-bar colours. |
-| `FIELD_MAX` | Swap details embed | `src/render.js:85` | Discord's limit on one embed field's value. |
-| `STEP_ORDER` | Swap details embed | `src/render.js:88` | The order steps are listed in the transaction hashes field; any other step goes last, in API order. |
-| `QUERY_WRONG_CHANNEL_MESSAGE` `export` | Plain-text messages | `src/render.js:180` | Private reply to /meson-query used outside the REPLY_CATEGORY_IDS categories. |
-| `CLOSING_SOON` `export` | Plain-text messages | `src/render.js:183` | Last line of a closing message once every swap in the ticket is finished. |
-| `STATUS_EMOJI` | Wallet embeds | `src/render.js:228` | Status icon on each row of the wallet list (finished swaps are never listed); any status not here — Requesting, Posted, Bonded, Locked — gets ⚪. |
-| `ROWS_PER_EMBED` | Wallet embeds | `src/render.js:252` | Rows per embed: ~300 chars each, so 10 keeps an embed well under Discord's 6000-character cap (which applies to all of a message's embeds combined). |
+| `COLOR` | Shared helpers | `src/render.js:48` | Embed side-bar colours. |
+| `FIELD_MAX` | Swap details embed | `src/render.js:86` | Discord's limit on one embed field's value. |
+| `STEP_ORDER` | Swap details embed | `src/render.js:89` | The order steps are listed in the transaction hashes field; any other step goes last, in API order. |
+| `QUERY_WRONG_CHANNEL_MESSAGE` `export` | Plain-text messages | `src/render.js:191` | Private reply to /meson-query used outside the REPLY_CATEGORY_IDS categories. |
+| `CLOSING_SOON` `export` | Plain-text messages | `src/render.js:194` | Last line of a closing message once every swap in the ticket is finished. |
+| `STATUS_EMOJI` | Wallet embeds | `src/render.js:239` | Status icon on each row of the wallet list (finished swaps are never listed); any status not here — Requesting, Posted, Bonded, Locked — gets ⚪. |
+| `ROWS_PER_EMBED` | Wallet embeds | `src/render.js:263` | Rows per embed: ~300 chars each, so 10 keeps an embed well under Discord's 6000-character cap (which applies to all of a message's embeds combined). |
 
 ### src/ticket-state.js
 
@@ -344,15 +362,8 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | --- | --- | --- | --- |
 | `tickets` | State | `src/ticket-state.js:41` | Every ticket the bot has seen since it started, by channel ID. |
 
-### src/tickets.js
-
-| Constant | Section | Line | Purpose |
-| --- | --- | --- | --- |
-| `MESSAGE_ATTEMPTS` | Entry point | `src/tickets.js:63` | How often a message is handled in all when Meson errors (not "not found"): the first try plus TICKET_RETRIES. |
-| `MESSAGE_RETRY_MS` | Entry point | `src/tickets.js:64` |  |
-
 ### src/watch.js
 
 | Constant | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `watchers` | Polling | `src/watch.js:40` | Pending re-check per watched swap, keyed `${channelId}:${swapId}`. |
+| `watchers` | Polling | `src/watch.js:46` | Every watched swap, keyed `${channelId}:${swapId}`: what a check round needs to re-check it, and when it is next due. |
