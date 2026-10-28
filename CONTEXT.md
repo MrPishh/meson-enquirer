@@ -194,7 +194,7 @@ The bot treats only **Done**, **Released** and **Cancelled** as finished (`isFin
 If it *was* POSTED, the funds are in the contract until a CANCELLED returns them.
 The docs say an API-submitted swap expires after 10 minutes if blocked, but the window in `expireTs` varies (≈90 min has been observed).
 
-Because of that, the bot's Expired text says only **"the swap was not completed in time"** — nothing about where the funds are or whether it can still go through.
+Because of that, the bot's Expired text says only **"the swap was not completed in time — our support team will look into it"** — nothing about where the funds are or whether it can still go through. Failed and Unlocked follow the same pattern — what happened, then "our support team will look into it" — and promise nothing about the outcome either.
 Support may be able to cancel and refund it, or (if the funds are in the contract) push it to completion, so any stronger wording could be wrong.
 
 **`REQUESTING`** is a further event the explorer returns that the docs do not list — seen alone on an expired swap, with **no `hash`** (asked for, never on-chain).

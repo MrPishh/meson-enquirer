@@ -26,26 +26,26 @@
 // L141    explorerStatus()
 // L171    deriveStatus()
 // L179    statusFor()
-// L204    isFinished()
-// L206  Swap view
-// L211    TARGET_CHAIN_STEPS
-// L214    toDate()
-// L217    toSwapView()
-// L273  Chain health
-// L278    RPCS
-// L287    troubledChainIds()
-// L295    fetchChainHealth()
-// L318    addChainHealth()
-// L327  Single swap
-// L336    lookupSwap()
-// L341    getSwap()
-// L348    SWAP_BATCH_SIZE
-// L351    BATCH_PAUSE_MS
-// L363    getSwaps()
-// L406  Wallet swaps
-// L417    listSwapsForAddress()
-// L435    MAX_PAGE_SIZE
-// L449    listUnfinishedSwapsForAddress()
+// L205    isFinished()
+// L207  Swap view
+// L212    TARGET_CHAIN_STEPS
+// L215    toDate()
+// L218    toSwapView()
+// L274  Chain health
+// L279    RPCS
+// L288    troubledChainIds()
+// L296    fetchChainHealth()
+// L319    addChainHealth()
+// L328  Single swap
+// L337    lookupSwap()
+// L342    getSwap()
+// L349    SWAP_BATCH_SIZE
+// L352    BATCH_PAUSE_MS
+// L364    getSwaps()
+// L407  Wallet swaps
+// L418    listSwapsForAddress()
+// L436    MAX_PAGE_SIZE
+// L450    listUnfinishedSwapsForAddress()
 // ----- end of contents -----
 
 import { config } from './config.js'
@@ -183,12 +183,13 @@ function statusFor (label) {
     case 'RELEASED': return { label: 'Released', detail: null, done: true, ok: true }
     case 'CANCELLED': return { label: 'Cancelled', detail: null, done: true, ok: false }
     case 'RELEASING': return { label: 'Releasing', detail: null, done: false, ok: true }
-    // UNLOCKED: the LP's lock on the target chain was undone. Say only that — what happens to the funds next (a refund via CANCELLED, or support completing it) is not something the bot can promise, as with Expired.
-    case 'UNLOCKED': return { label: 'Unlocked', detail: 'the swap did not go through', done: false, ok: false }
-    case 'FAILED': return { label: 'Failed', detail: null, done: false, ok: false }
+    // The three "stuck" statuses say what happened and that support will act — never how it ends (support may refund it or push it through).
+    // UNLOCKED: the LP's lock on the target chain was undone.
+    case 'UNLOCKED': return { label: 'Unlocked', detail: 'the swap did not go through — our support team will look into it', done: false, ok: false }
+    case 'FAILED': return { label: 'Failed', detail: 'a step of this transaction failed — our support team will look into it', done: false, ok: false }
     case 'EXPIRED':
-      // Deliberately say nothing about what happens next: support may cancel and refund it, or complete it from the contract — any promise here ("funds stay with the sender", "can no longer go through") can be wrong.
-      return { label: 'Expired', detail: 'the swap was not completed in time', done: false, ok: false }
+      // No promise about the outcome: support may cancel and refund it, or complete it from the contract — wording like "funds stay with the sender" or "can no longer go through" can be wrong.
+      return { label: 'Expired', detail: 'the swap was not completed in time — our support team will look into it', done: false, ok: false }
     case '':
     case 'PENDING': return { label: 'Pending', detail: null, done: false, ok: true }
     // REQUESTING / POSTED / BONDED / LOCKED (or a step the explorer adds later): its own word, still moving.

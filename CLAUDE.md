@@ -121,9 +121,9 @@ The explorer's `*` (e.g. "Expired*") is kept: it is `status.star`, shown after `
 | Done | released to the recipient | — | ✅ Transaction Completed | no | stops |
 | Released | released, LP has not executed yet — complete for the user | — | ✅ Transaction Completed | no | stops |
 | Cancelled | funds returned to the initiator | — | ↩️ Transaction Cancelled | no | stops |
-| Expired | past deadline before executed; shown as just "not completed in time" — support may still cancel/refund or complete it, so the bot promises nothing | no | — (✅/↩️ once resolved) | yes | yes |
-| Unlocked | LP lock undone — shown as just "did not go through"; the bot promises nothing about the funds | no | — (✅/↩️ once resolved) | yes | yes |
-| Failed | only failed attempts so far (rare: any other step outranks it) | no | — (✅/↩️ once resolved) | yes | yes |
+| Expired | past deadline before executed; shown as "not completed in time — our support team will look into it" — support may still cancel/refund or complete it, so nothing is promised about the outcome | no | — (✅/↩️ once resolved) | yes | yes |
+| Unlocked | LP lock undone; shown as "did not go through — our support team will look into it" | no | — (✅/↩️ once resolved) | yes | yes |
+| Failed | only failed attempts so far (rare: any other step outranks it); shown as "a step of this transaction failed — our support team will look into it" | no | — (✅/↩️ once resolved) | yes | yes |
 
 "Finished" (`isFinished`) = Done, Released or Cancelled. "Ticket will be closed soon" goes only on the closing message of the swap that finishes last — when every *other* swap in the ticket is finished too; earlier closing messages lose it when a new swap joins and never get it back.
 
