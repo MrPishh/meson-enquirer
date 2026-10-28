@@ -1,7 +1,7 @@
 /**
  * Keeps a posted swap current until it finishes.
  *
- * Right after a swap's details embed is posted, watchSwap replies with the closing note if it is already finished (Done / Released / Cancelled); otherwise it re-polls in the background, and a swap still moving normally gets the ⏳ "being processed" line once it has been unfinished for PROCESSING_MESSAGE_DELAY_SECONDS (most finish sooner and never get one).
+ * Right after a swap's details embed is posted, watchSwap replies with the closing note if it is already finished (Done / Released / Cancelled); otherwise a swap still moving normally gets the ⏳ "being processed" line — straight away, or held back PROCESSING_MESSAGE_DELAY_SECONDS if that is set — and it re-polls in the background.
  * On every status or event change it edits the details embed in place (silent — an edit notifies nobody); once the swap is finished it replies to that embed with the closing note, which is what the user actually gets notified about, and deletes its ⏳ line.
  * syncFollowUps keeps a swap's ⏳ / closing note labelled "Swap #n" and drops "closed soon" when another swap joins the ticket.
  *
@@ -220,7 +220,7 @@ export async function watchSwap (t, entry, { resumed = false } = {}) {
     return
   }
   // Failed / Expired / Unlocked (status.ok false) will not "complete shortly"; a resumed swap keeps the ⏳ it has (or had) — one held back and not yet posted when the bot restarted is not posted.
-  // Most swaps finish within seconds, so the ⏳ is held back PROCESSING_MESSAGE_DELAY_SECONDS and posted by a check round only if the swap is still unfinished then (applyCheck). Without re-checks it has to go out now.
+  // With PROCESSING_MESSAGE_DELAY_SECONDS set, the ⏳ is held back and posted by a check round only if the swap is still unfinished then (applyCheck); at 0 (the default), or without re-checks, it goes out now.
   if (entry.latest.status.ok && !resumed) {
     if (config.processingDelayMs > 0 && config.watchIntervalMs > 0) entry.processingDueAt = Date.now() + config.processingDelayMs
     else await postProcessing(t, entry)

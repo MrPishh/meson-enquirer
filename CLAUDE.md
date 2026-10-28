@@ -106,7 +106,7 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 5. `postSwap` → details embed (reply to the user's message, or plain send for the form).
    From the 2nd swap on, embeds, ⏳ lines and closing messages carry `#n` — #1's embed, ⏳ and closing message are re-rendered, so every swap's messages are always labelled alike.
    Each new swap also re-renders the earlier closing messages (`syncFollowUps`, `src/watch.js`): "ticket will be closed soon" is dropped from them while the new swap is open.
-   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ (only if `status.ok`, and held back `PROCESSING_MESSAGE_DELAY_SECONDS`: a check round posts it only if the swap is still unfinished then), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ line.
+   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ (only if `status.ok`; straight away by default, or — if `PROCESSING_MESSAGE_DELAY_SECONDS` is set — held back and posted by a check round only if the swap is still unfinished then), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ line.
 
 ### Statuses
 
@@ -116,8 +116,8 @@ The explorer's `*` (e.g. "Expired*") is kept: it is `status.star`, shown after `
 
 | Status | Meaning | ⏳ line | Closing message | In wallet list | Watched |
 | --- | --- | --- | --- | --- | --- |
-| Pending / Requesting / Posted / Bonded / Locked | still moving (whatever the explorer shows before executed confirms) | yes, if still unfinished after `PROCESSING_MESSAGE_DELAY_SECONDS` | — | yes | yes |
-| Releasing | executed has confirmed (even past the deadline), or a release is requested / confirming / being retried | yes, if still unfinished after `PROCESSING_MESSAGE_DELAY_SECONDS` | — | yes | yes |
+| Pending / Requesting / Posted / Bonded / Locked | still moving (whatever the explorer shows before executed confirms) | yes (after `PROCESSING_MESSAGE_DELAY_SECONDS` if set) | — | yes | yes |
+| Releasing | executed has confirmed (even past the deadline), or a release is requested / confirming / being retried | yes (after `PROCESSING_MESSAGE_DELAY_SECONDS` if set) | — | yes | yes |
 | Done | released to the recipient | — | ✅ Transaction Completed | no | stops |
 | Released | released, LP has not executed yet — complete for the user | — | ✅ Transaction Completed | no | stops |
 | Cancelled | funds returned to the initiator | — | ↩️ Transaction Cancelled | no | stops |
