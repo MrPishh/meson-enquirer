@@ -87,7 +87,8 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | Change what counts as a swap ID / encoding / hash / wallet | `extractCandidates`, `extractAddressCandidates` in `src/extract.js` |
 | Change what happens when a ticket message arrives | `handleTicketMessage` in `src/tickets.js` |
 | Change the wallet fallback (which swaps, how far back) | `postWalletSwaps` (`src/tickets.js`), `listUnfinishedSwapsForAddress` (`src/meson.js`), `buildUnfinishedAddressEmbeds` (`src/render.js`) |
-| Change follow-ups, polling speed, when watching stops | `watchSwap`, `watchDelay`, `runRound` (the shared check round), `applyCheck`, `postProcessing` in `src/watch.js` |
+| Change follow-ups, polling speed, when the ⏳ is removed | `watchSwap`, `watchDelay`, `ageOf`, `runRound` (the shared check round), `applyCheck`, `postProcessing`, `withdrawProcessing` in `src/watch.js` |
+| Change when a Releasing swap counts as stuck | `deriveStatus` in `src/meson.js` (`RELEASING_STUCK_AFTER_MINUTES`) |
 | Change what happens while Meson is down (retries, back-off, random spacing) | `getJson` (quick retries), `jitter` in `src/meson.js`; `queueMessage`, `retryDelay`, `worthRetrying` in `src/tickets.js`; `claim` in `src/recover.js` (`MESON_*`, `TICKET_RETRY_*`, `JITTER_PERCENT`) |
 | Change the explorer status check (when, how it compares) | `checkExplorerStatus`, `startExplorerCheck`, `PORTED_FINGERPRINT` in `src/explorer-check.js` (`EXPLORER_CHECK_HOURS`) |
 | Change how a status is worked out | `explorerStatus` (port of the explorer's — re-port, don't tune) and `deriveStatus` in `src/meson.js` (+ `CONTEXT.md` § Status derivation) |
@@ -139,6 +140,7 @@ The explorer's `*` (e.g. "Expired*") is kept: it is `status.star`, shown after `
 | --- | --- | --- | --- | --- | --- |
 | Pending / Requesting / Posted / Bonded / Locked | still moving (whatever the explorer shows before executed confirms) | yes | — | yes | yes |
 | Releasing | executed has confirmed (even past the deadline), or a release is requested / confirming / being retried | yes | — | yes | yes |
+| Releasing (stuck) | still Releasing `RELEASING_STUCK_AFTER_MINUTES` past the deadline; shown as "taking longer than usual — our support team will look into it" (`status.stuck`) — the heading still says Releasing | no (removed if it had one) | — (✅/↩️ once resolved) | yes (🔴) | yes |
 | Done | released to the recipient | — | ✅ Transaction Completed | no | stops |
 | Released | released, LP has not executed yet — complete for the user | — | ✅ Transaction Completed | no | stops |
 | Cancelled | funds returned to the initiator | — | ↩️ Transaction Cancelled | no | stops |
@@ -209,7 +211,8 @@ There is no test suite.
   Never derive a "took X" duration from `expireTs` — the API has no failure timestamp and `expireTs` can be over an hour off.
 - **The address endpoint has no total count and `size` ≤ 20.** `list.length === size` is the only "maybe more" signal; it has no status or date filter (checked — `failed=true` is accepted but only filters for Meson's admins), so filtering is done locally and bounded by `ADDRESS_LOOKBACK_DAYS` / `ADDRESS_MAX_PAGES`.
 - **The ⚠️ network notice is only a hint.** `fetchChainHealth` swallows every error (logged) and returns "no known problems"; a health failure must never fail or delay a swap lookup. One cached request (`CHAIN_HEALTH_CACHE_SECONDS`) serves every lookup.
-- **Releasing never becomes Expired** (the explorer checks EXECUTED before the deadline), so a stuck release is ended only by `SWAP_WATCH_MAX_HOURS` — keep it generous.
+- **Releasing never becomes Expired** (the explorer checks EXECUTED before the deadline), so a release that never comes would look "in progress" forever. Hence `status.stuck` (`deriveStatus`, `RELEASING_STUCK_AFTER_MINUTES`; of 137 observed swaps the latest finished 8 minutes past its deadline), and a swap is never dropped: after `SWAP_WATCH_LONG_AFTER_HOURS` it is checked every `SWAP_WATCH_LONG_INTERVAL_MINUTES` until it finishes or its ticket is closed.
+- **A ⏳ only while the swap moves normally.** When `status.ok` turns false (stuck, Expired…), `withdrawProcessing` removes the ⏳ — in a check round and on restart recovery.
 - **Descriptions must stay true.** The checks above prove that docs *point* to real things, not that they *say* the right thing. After any change in behaviour, review every description of it (docs, comments, user-facing text) and record the review in `.claude/last-description-review` — the next review starts from the commit that last changed that file.
 - **Never publish secrets.** `.env` (bot token, server/channel/role IDs) and every `.env.*` variant except `.env.example` are git-ignored — keep it that way, keep the token and every ID out of `.env.example` (only non-secret values like `AUTO_SCAN_MESSAGES=6`), and never paste real IDs or tokens into code or docs.
   Throwaway test scripts go in a temp folder, not the project.

@@ -76,7 +76,11 @@ export const config = {
   watchSlowerIntervalMs: number('SWAP_WATCH_SLOWER_INTERVAL_SECONDS') * 1000,
   watchSlowestAfterMs: number('SWAP_WATCH_SLOWEST_AFTER_MINUTES') * 60 * 1000,
   watchSlowestIntervalMs: number('SWAP_WATCH_SLOWEST_INTERVAL_SECONDS') * 1000,
-  watchMaxMs: number('SWAP_WATCH_MAX_HOURS') * 60 * 60 * 1000,
+  // Once a swap is this old (since it was requested), it is checked only every SWAP_WATCH_LONG_INTERVAL_MINUTES — until it finishes or its ticket is closed; it is never dropped.
+  watchLongAfterMs: number('SWAP_WATCH_LONG_AFTER_HOURS') * 60 * 60 * 1000,
+  watchLongIntervalMs: number('SWAP_WATCH_LONG_INTERVAL_MINUTES') * 60 * 1000,
+  // A Releasing swap this long past its deadline counts as stuck: no ⏳ promise, a "taking longer than usual" note instead. 0 = never.
+  releasingStuckAfterMs: number('RELEASING_STUCK_AFTER_MINUTES', 0) * 60 * 1000,
 
   // Meson API requests: give up on one after this long; retry errors this many times (waits about 1s, 2s, 4s, …, jittered).
   mesonTimeoutMs: number('MESON_TIMEOUT_SECONDS') * 1000,
@@ -101,3 +105,4 @@ if (config.ticketRetryMaxMs < config.ticketRetryMs) fail('TICKET_RETRY_MAX_SECON
 
 // The slow-down stages must come in order, or the middle one is silently skipped.
 if (config.watchSlowestAfterMs < config.watchSlowerAfterMs) fail('SWAP_WATCH_SLOWEST_AFTER_MINUTES in .env must not be below SWAP_WATCH_SLOWER_AFTER_MINUTES')
+if (config.watchLongAfterMs < config.watchSlowestAfterMs) fail('SWAP_WATCH_LONG_AFTER_HOURS in .env must not be below SWAP_WATCH_SLOWEST_AFTER_MINUTES')

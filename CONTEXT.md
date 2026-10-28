@@ -9,8 +9,8 @@ L109  Other public endpoints found in the explorer's code (2026-10-28)
 L130  The encoded swap
 L161  Chain and token names
 L173  Status derivation
-L234  Per-chain explorer links
-L242  Things that will break this
+L235  Per-chain explorer links
+L243  Things that will break this
 end of contents -->
 
 Everything here was established empirically against live Meson endpoints on 2026-10-27/28 and verified field-by-field against the rendered explorer page.
@@ -207,6 +207,7 @@ By those descriptions EXECUTED is the LP collecting, which should follow RELEASE
 Observed by support (2026-10): status goes Pending → Releasing → Done / Cancelled / Expired; the steps seen are BONDED (Solana only), EXECUTED, RELEASING / RELEASED and CANCELLED.
 Survey of 2000 recent swaps (2026-10-28) — every event kind that occurred: RELEASED 1987, EXECUTED 1986, BONDED 151 (Solana), REQUESTING without hash 28, `RELEASED:FAILED` 10, RELEASING without hash 8, `EXECUTED:FAILED` 1, CANCELLED 1, and one swap with a `pending` EXECUTED + CANCELLED (explorer: Expired*). POSTED, LOCKED, UNLOCKED and GASDROP did not occur. 90% were plain EXECUTED + RELEASED.
 Watched live (2026-10-28, 8 new swaps over 25 min): a new swap first shows **Pending** with its EXECUTED still `pending` (confirming); the RELEASED event then appears while still confirming (status stays Pending, or Releasing once EXECUTED has confirmed); then **Done** — sometimes even while EXECUTED is still confirming. Time from first sight to Done: 11 s to 10½ min, most within ~1½ min. Holding the ⏳ back for fast swaps was tried and removed (2026-10-28): those timings are for *all* swaps, while a ticket is opened only after a swap has looked stuck for a while — so ticket swaps rarely finish within seconds, and the ⏳ should reassure at once.
+Deadlines (2026-10-28, 137 completed swaps followed live): `expireTs` is typically ~105 min after the request; only one swap completed after its deadline, 8 min past it. A swap still Releasing an hour past its deadline is therefore stuck, not slow (`RELEASING_STUCK_AFTER_MINUTES`) — e.g. a SKALE Europa → BNB swap seen executed but never released for 7 days.
 In the transaction hashes list the release is one entry: releasing (the hashless request) → releasing (confirming) (RELEASED, `pending`) → released.
 
 The bot treats only **Done**, **Released** and **Cancelled** as finished (`isFinished`): nothing is left to chase. Expired, Unlocked and Failed stay watched until the team resolves them.

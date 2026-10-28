@@ -237,7 +237,7 @@ export function buildSwapNotFoundMessage (queries) {
 //   Wallet embeds
 // =============================================================================
 
-/** Status icon on each row of the wallet list (finished swaps are never listed); any status not here — Requesting, Posted, Bonded, Locked — gets ⚪. */
+/** Status icon on each row of the wallet list (finished swaps are never listed); any status not here — Requesting, Posted, Bonded, Locked — gets ⚪, and a stuck Releasing swap gets 🔴. */
 const STATUS_EMOJI = {
   Releasing: '🟡',
   Pending: '⚪',
@@ -297,7 +297,7 @@ export function buildUnfinishedAddressEmbeds (address, result, opts = {}) {
       embed.setDescription(`${code(address)}${missed}`)
     }
     for (const swap of rows) {
-      const emoji = STATUS_EMOJI[swap.status.label] ?? '⚪'
+      const emoji = swap.status.stuck ? '🔴' : STATUS_EMOJI[swap.status.label] ?? '⚪'
       embed.addFields({ name: `${emoji} ${swap.status.label}${swap.status.star}`, value: addressRowValue(swap) })
     }
     return embed

@@ -25,27 +25,27 @@
 // L135    EXPLORER_STEP_RANK
 // L141    explorerStatus()
 // L171    deriveStatus()
-// L179    statusFor()
-// L205    isFinished()
-// L207  Swap view
-// L212    TARGET_CHAIN_STEPS
-// L215    toDate()
-// L218    toSwapView()
-// L274  Chain health
-// L279    RPCS
-// L288    troubledChainIds()
-// L296    fetchChainHealth()
-// L319    addChainHealth()
-// L328  Single swap
-// L337    lookupSwap()
-// L342    getSwap()
-// L349    SWAP_BATCH_SIZE
-// L352    BATCH_PAUSE_MS
-// L364    getSwaps()
-// L407  Wallet swaps
-// L418    listSwapsForAddress()
-// L436    MAX_PAGE_SIZE
-// L450    listUnfinishedSwapsForAddress()
+// L185    statusFor()
+// L211    isFinished()
+// L213  Swap view
+// L218    TARGET_CHAIN_STEPS
+// L221    toDate()
+// L224    toSwapView()
+// L280  Chain health
+// L285    RPCS
+// L294    troubledChainIds()
+// L302    fetchChainHealth()
+// L325    addChainHealth()
+// L334  Single swap
+// L343    lookupSwap()
+// L348    getSwap()
+// L355    SWAP_BATCH_SIZE
+// L358    BATCH_PAUSE_MS
+// L370    getSwaps()
+// L413  Wallet swaps
+// L424    listSwapsForAddress()
+// L442    MAX_PAGE_SIZE
+// L456    listUnfinishedSwapsForAddress()
 // ----- end of contents -----
 
 import { config } from './config.js'
@@ -166,13 +166,19 @@ function explorerStatus (events, expireTs) {
 /**
  * Derive the display status: the explorer's own label (explorerStatus), title-cased, plus what the bot does with it.
  * `label` is the bare word the code checks ("Expired"); `star` is the explorer's `*` (an LP lock still outstanding), shown after it wherever the status is displayed ("Expired*").
- * `done` + `ok`: Done / Released are finished (✅), Cancelled is finished (↩️); `ok` false means no ⏳ "completed shortly" promise.
+ * `done` + `ok`: Done / Released are finished (✅), Cancelled is finished (↩️); `ok` false means no ⏳ "completed shortly" promise. `stuck`: a Releasing swap well past its deadline (RELEASING_STUCK_AFTER_MINUTES).
  */
 function deriveStatus (raw, decoded) {
   const events = Array.isArray(raw.events) ? raw.events : []
   const shown = explorerStatus(events, decoded.expireTs)
   const star = shown.includes('*') ? '*' : ''
-  return { ...statusFor(shown.replace(/[*.]+$/, '')), star }
+  const status = { ...statusFor(shown.replace(/[*.]+$/, '')), star, stuck: false }
+  // Releasing never turns into Expired, so a release that never comes would read as "in progress" forever. Well past the deadline it is stuck (of 137 observed swaps, the latest completed 8 min past it): the heading stays the explorer's, but it reads like the other stuck statuses and gets no ⏳ promise.
+  const pastDeadlineMs = Date.now() - decoded.expireTs * 1000
+  if (status.label === 'Releasing' && config.releasingStuckAfterMs > 0 && decoded.expireTs && pastDeadlineMs > config.releasingStuckAfterMs) {
+    return { ...status, ok: false, stuck: true, detail: 'this transaction is taking longer than usual — our support team will look into it' }
+  }
+  return status
 }
 
 /** What the bot does with each explorer label (without its `*` / `...`). */

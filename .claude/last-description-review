@@ -1,4 +1,4 @@
-Last description review: 2026-10-28 (changed-scope, after a full review earlier the same day).
+Last description review: 2026-10-28 (changed-scope: stuck Releasing swaps, never-dropped follow-up, ⏳ removal).
 It covers the project up to and including the commit that last changed this file:
   git log -1 --format=%h -- .claude/last-description-review
 The next review only needs to look at what changed after that commit:
