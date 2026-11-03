@@ -34,7 +34,7 @@
 | `src/watch.js` | 248 | Polling (41) · Watch lifecycle (177) | Keeps a posted swap current until it finishes. |
 | `scripts/build-index.mjs` | 424 | Parsing (61) · Contents block (148) · Markdown Contents block (181) · CODE_INDEX.md (222) · Main (340) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, the heading Contents block of every long doc (README.md… |
 | `scripts/check-explorer.mjs` | 22 | — | `npm run check-explorer` — check from the terminal whether the Meson explorer's status function still matches our port (`explorerStatus` in src/meson.js), th… |
-| `scripts/doc-checks.mjs` | 277 | Reading the docs (32) · Checks (113) | Doc-drift checks run by `npm run index` (scripts/build-index.mjs): the hand-written docs must point to things that exist, in the places they say. |
+| `scripts/doc-checks.mjs` | 303 | Reading the docs (33) · Checks (132) | Doc-drift checks run by `npm run index` (scripts/build-index.mjs): the hand-written docs must point to things that exist, in the places they say. |
 | `scripts/index-hook.mjs` | 23 | — | Claude Code PostToolUse hook (.claude/settings.json): after an Edit/Write to a .js/.mjs file under src/ or scripts/, or to a doc in the project root, rebuild… |
 | `scripts/lookup-address.mjs` | 48 | — | CLI: list a wallet's swaps (one page, or the ticket's unfinished view). |
 | `scripts/lookup.mjs` | 47 | — | CLI: look up one swap exactly as a ticket would. |
@@ -282,23 +282,24 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `read` | Reading the docs | `scripts/doc-checks.mjs:50` | A file's text, or null if it does not exist. |
-| `wordIn` | Reading the docs | `scripts/doc-checks.mjs:55` | Whether `name` occurs in `text` as a whole word. |
-| `ticks` | Reading the docs | `scripts/doc-checks.mjs:58` | Every `backticked` span in a piece of text. |
-| `looksLikeCode` | Reading the docs | `scripts/doc-checks.mjs:61` | A name that reads as code: camelCase, or CONSTANT_CASE of 4+ characters. |
-| `prose` | Reading the docs | `scripts/doc-checks.mjs:64` | A doc's lines with fenced code blocks and generated Contents blocks blanked (kept as '' so line numbers still match) — what is left is prose. |
-| `tableUnder` | Reading the docs | `scripts/doc-checks.mjs:76` | The rows (as cell arrays, header and divider left out) of the first table under the heading that starts with `title`, or null if there is no such heading. |
-| `sectionUnder` | Reading the docs | `scripts/doc-checks.mjs:90` | The lines from the heading that starts with `title` up to the next heading of the same or a higher level. |
-| `anchors` | Reading the docs | `scripts/doc-checks.mjs:99` | GitHub's anchors for a doc's headings (`#where-to-look-for`), repeats numbered like GitHub does. |
-| `checkDocs` `export` | Checks | `scripts/doc-checks.mjs:122` | Run every doc-drift check. |
-| `checkFileMap` | Checks | `scripts/doc-checks.mjs:155` | Every file in src/ and scripts/ has a row in the CLAUDE.md file map, and every row names a file that exists. |
-| `checkTaskTable` | Checks | `scripts/doc-checks.mjs:168` | In each "Where to look for…" row, every function or constant it names is defined in one of the files that row names. |
-| `checkSettings` | Checks | `scripts/doc-checks.mjs:183` | The settings src/config.js reads = the keys in .env.example = the keys in .env (if present; values are never read out) = the settings README § Settings names. |
-| `checkCommands` | Checks | `scripts/doc-checks.mjs:203` | The slash commands defined in COMMANDS = the rows of the CLAUDE.md "Slash commands" table. |
-| `checkNpmScripts` | Checks | `scripts/doc-checks.mjs:212` | Every `npm run x` / `npm start` in the docs exists in package.json, and every package.json script is documented somewhere (lifecycle hooks like prestart exce… |
-| `checkLineNumbers` | Checks | `scripts/doc-checks.mjs:226` | Hand-written line numbers ("lines 1–75", `tickets.js:71`) go stale with every edit — only generated files carry them. |
-| `checkLinks` | Checks | `scripts/doc-checks.mjs:234` | Every relative link and #anchor in a doc resolves (web links are not checked). |
-| `checkCode` | Checks | `scripts/doc-checks.mjs:252` | Code hygiene behind the index: unused imports and unused private definitions are errors; exports no other file uses, definitions without a purpose comment an… |
+| `read` | Reading the docs | `scripts/doc-checks.mjs:51` | A file's text, or null if it does not exist. |
+| `wordIn` | Reading the docs | `scripts/doc-checks.mjs:56` | Whether `name` occurs in `text` as a whole word. |
+| `ticks` | Reading the docs | `scripts/doc-checks.mjs:59` | Every `backticked` span in a piece of text. |
+| `looksLikeCode` | Reading the docs | `scripts/doc-checks.mjs:65` | A backticked span that reads as code: camelCase, snake_case, CONSTANT_CASE of 4+ characters, or anything written as a call (`name()`). |
+| `withoutComments` | Reading the docs | `scripts/doc-checks.mjs:72` | Code with its comment-only lines removed (the generated Contents blocks too), so a name that survives only in a comment does not count as existing. |
+| `prose` | Reading the docs | `scripts/doc-checks.mjs:83` | A doc's lines with fenced code blocks and generated Contents blocks blanked (kept as '' so line numbers still match) — what is left is prose. |
+| `tableUnder` | Reading the docs | `scripts/doc-checks.mjs:95` | The rows (as cell arrays, header and divider left out) of the first table under the heading that starts with `title`, or null if there is no such heading. |
+| `sectionUnder` | Reading the docs | `scripts/doc-checks.mjs:109` | The lines from the heading that starts with `title` up to the next heading of the same or a higher level. |
+| `anchors` | Reading the docs | `scripts/doc-checks.mjs:118` | GitHub's anchors for a doc's headings (`#where-to-look-for`), repeats numbered like GitHub does. |
+| `checkDocs` `export` | Checks | `scripts/doc-checks.mjs:141` | Run every doc-drift check. |
+| `checkFileMap` | Checks | `scripts/doc-checks.mjs:174` | Every file in src/ and scripts/ has a row in the CLAUDE.md file map, and every row names a file that exists. |
+| `checkTaskTable` | Checks | `scripts/doc-checks.mjs:190` | In each "Where to look for…" row, every function or constant it names is defined in one of the files that row names. |
+| `checkSettings` | Checks | `scripts/doc-checks.mjs:207` | The settings src/config.js reads = the keys in .env.example = the keys in .env (if present; values are never read out) = the settings README § Settings names. |
+| `checkCommands` | Checks | `scripts/doc-checks.mjs:227` | The slash commands defined in COMMANDS = the rows of the CLAUDE.md "Slash commands" table. |
+| `checkNpmScripts` | Checks | `scripts/doc-checks.mjs:236` | Every `npm run x` / `npm start` in the docs exists in package.json, and every package.json script is documented somewhere (lifecycle hooks like prestart exce… |
+| `checkLineNumbers` | Checks | `scripts/doc-checks.mjs:250` | Hand-written line numbers ("lines 1–75", `tickets.js:71`) go stale with every edit — only generated files carry them. |
+| `checkLinks` | Checks | `scripts/doc-checks.mjs:258` | Every relative link and #anchor in a doc resolves (web links are not checked). |
+| `checkCode` | Checks | `scripts/doc-checks.mjs:276` | Code hygiene behind the index: unused imports and unused private definitions are errors; exports no other file uses, definitions without a purpose comment an… |
 
 ### scripts/lookup-address.mjs
 
@@ -387,7 +388,7 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Constant | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `EXPLORER` `export` | Upstream HTTP | `src/meson.js:60` | Base URL of the Meson explorer — every explorer API call and explorer link uses it. |
+| `EXPLORER` `export` | Upstream HTTP | `src/meson.js:60` | Base URL of the Meson explorer — every explorer API call and swap link uses it (the wallet embed's link in render.js spells it out). |
 | `UA` | Upstream HTTP | `src/meson.js:63` | User-Agent sent with every request. |
 | `EXPLORER_STEP_RANK` | Status | `src/meson.js:135` | Step rank used by the explorer to find a swap's furthest step — copied from its bundle, order matters (src/explorer-check.js warns when the explorer changes … |
 | `TARGET_CHAIN_STEPS` | Swap view | `src/meson.js:218` | Steps whose transaction is on the target chain (Meson's docs: LP lock, release, unlock) — their hashes link to that chain's explorer. |

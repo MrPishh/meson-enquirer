@@ -76,7 +76,7 @@ IDs: turn on Developer Mode in Discord, then right-click the server / role → C
 | Setting | What it does |
 | --- | --- |
 | `SWAP_WATCH_INTERVAL_SECONDS` | Check this often at first — also how often the shared check round runs. `0` = don't follow swaps (the closing note is then only posted if the swap was already finished). |
-| `SWAP_WATCH_SLOWER_AFTER_MINUTES` / `SWAP_WATCH_SLOWER_INTERVAL_SECONDS` | From this many minutes after posting, check this often instead. |
+| `SWAP_WATCH_SLOWER_AFTER_MINUTES` / `SWAP_WATCH_SLOWER_INTERVAL_SECONDS` | From this many minutes after the swap was requested, check this often instead (so a swap already old when its ticket opens starts on the slower checks). |
 | `SWAP_WATCH_SLOWEST_AFTER_MINUTES` / `SWAP_WATCH_SLOWEST_INTERVAL_SECONDS` | From this many minutes (not less than the line above), check this often. |
 | `SWAP_WATCH_LONG_AFTER_HOURS` / `SWAP_WATCH_LONG_INTERVAL_MINUTES` | Once a swap is this old (since it was requested), check it only this often. A swap is never dropped: it is followed until it finishes or its ticket is closed, so a late fix by the team still reaches the user. |
 | `RELEASING_STUCK_AFTER_MINUTES` | A swap still "Releasing" this long after its deadline counts as stuck: its details say "taking longer than usual — our support team will look into it", and it gets no ⏳ "completed shortly" line. `0` = never. |
@@ -136,7 +136,7 @@ Anything the explorer's search resolves, alone or buried in a sentence, backtick
 - **One embed per swap.** Each new swap gets its own details embed; the same swap again (its ID or either hash) is ignored. With several swaps, embeds are numbered #1, #2, …
 - **Follow-ups**, as plain-text replies to the swap's embed (numbered "Swap #n" like the embeds when there are several):
   - ⏳ "being processed" while a swap is moving normally — deleted once the closing message is posted;
-  - ✅ Transaction Completed / ↩️ Transaction Cancelled when it finishes — plus "this ticket will be closed soon" once every swap in the ticket is finished (if another swap is added later, the earlier messages get their "Swap #1" and lose "closed soon" until it finishes too);
+  - ✅ Transaction Completed / ↩️ Transaction Cancelled when it finishes — plus "this ticket will be closed soon" once every swap in the ticket is finished (if another swap is added later, the earlier messages get their "Swap #1" and lose "closed soon" for good — it goes on the closing message of whichever swap finishes last);
   - Expired, Unlocked, Failed and stuck swaps (still Releasing well past their deadline) get no ⏳ — and lose one they had — since "completed shortly" no longer holds; the bot keeps watching and posts ✅ / ↩️ once the team resolves them.
 - **Transaction hashes:** one entry per step, in process order, with the latest hash — failed attempts next to a successful one are not listed (they stay on the explorer); a step that has only failed so far is marked "(failed)". The release reads releasing → releasing (confirming) → released.
 - **Live updates.** The details embed is edited in place as the status changes (timing: the `SWAP_WATCH_*` settings).

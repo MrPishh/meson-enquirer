@@ -56,7 +56,7 @@ import { chainName, chainId, tokenSymbol, txUrl, addressUrl } from './presets.js
 //   Upstream HTTP
 // =============================================================================
 
-/** Base URL of the Meson explorer — every explorer API call and explorer link uses it. */
+/** Base URL of the Meson explorer — every explorer API call and swap link uses it (the wallet embed's link in render.js spells it out). */
 export const EXPLORER = 'https://explorer.meson.fi'
 
 /** User-Agent sent with every request. */
