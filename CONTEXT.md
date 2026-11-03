@@ -5,21 +5,21 @@ L28   The problem
 L32   Glossary
 L52   What the documented API does and does not give you
 L71   What the explorer API gives you
-L118  Other public endpoints found in the explorer's code (2026-10-28)
-L139  The encoded swap
-L170  Chain and token names
-L185  Status derivation
-L192    How it works
-L202    The `*` and how the bot writes a status
-L207    What each event means
-L224    Seen on real swaps
-L232    Which statuses count as finished
-L236    Expired
-L245    REQUESTING
-L251    Failed
-L259    Event order and the transaction hashes list
-L265  Per-chain explorer links
-L273  Things that will break this
+L119  Other public endpoints found in the explorer's code (2026-10-28)
+L140  The encoded swap
+L171  Chain and token names
+L187  Status derivation
+L194    How it works
+L204    The `*` and how the bot writes a status
+L209    What each event means
+L226    Seen on real swaps
+L234    Which statuses count as finished
+L238    Expired
+L247    REQUESTING
+L253    Failed
+L261    Event order and the transaction hashes list
+L267  Per-chain explorer links
+L275  Things that will break this
 end of contents -->
 
 Everything here was established empirically against live Meson endpoints on 2026-10-27/28 and verified field-by-field against the rendered explorer page.
@@ -76,7 +76,7 @@ All work unauthenticated, with no API key:
 
 ```
 GET https://explorer.meson.fi/api/v1/search?q=<anything>
-    -> {"result":{"swapId":"0x…"}}
+    -> {"result":{"swapId":"0x…"}}  or, for a wallet, {"result":{"address":"…"}}
 
 GET https://explorer.meson.fi/api/v1/swap/<swapId>
     -> {"result":{ _id, encoded, events[], srFee, lpFee, initiator,
@@ -91,6 +91,7 @@ GET https://explorer.meson.fi/api/v1/address/<address>/swap?page=0&size=10
 
 `search` is the useful discovery: one endpoint resolves **all** of these to a swap ID — swap ID, encoded swap, EVM transaction hash, and Solana signature (base58).
 Verified against all four, and (2026-10-28) for destination-side release hashes too — an EVM one and the release hash of a Solana swap.
+It also recognises wallets, answering `{"address": …}` (seen 2026-11-04 on a Sui wallet), which settles values whose shape cannot. Across 6000 recent swaps: Sui and Starknet wallets are 0x + 64 hex, the same as a swap ID; Sui hashes are 43–44 base58, the same as a Solana wallet.
 Unknown input returns `{"error":{"code":-32602,"message":"Swap not found"}}` with HTTP 400 *or* 404 (`/api/v1/swap/<id>` uses 400), so error handling must look at the body, not the status.
 
 `/api/v1/swap/<id>,<id>,…` (comma-separated swap IDs, checked 2026-10-28) answers with an **array** of the same records as the single lookup, byte-for-byte: sorted by ID (not request order), duplicates merged, unknown IDs silently left out (all unknown → `[]`, HTTP 200).
@@ -132,7 +133,7 @@ GET only — the code also has write calls (`PUT /api/v1/swap/<encoded>`, `DELET
 | `relayer.meson.fi/api/v1/limits` | yes | Per chain and token: `min` / `max` swap amount (e.g. USDC on Arbitrum 1.0 – 20000) — same list as `/list` plus limits |
 | `relayer.meson.fi/api/v1/rules` | yes | 371 fee rules (route → minimum, fee, limit, `waiveSrFee`) plus `prices` |
 | `liquidity.meson.fi/api/v1/balance?networkId=<id>&entry=pool:1` | yes | Meson's pool balance per token on one chain (`value` as a decimal string; the `_id` starts with a ms timestamp) — 0 means no liquidity there right now |
-| `rpcs.meson.fi/` | yes | `{success, data: {<chainId>: [nodes]}}` — every chain's RPC nodes as Meson sees them: `healthy`, `latency`, `lastBlockNumber`, `lastBlockTimestamp`, `gasPrice` — 44 chains, keyed by the same ids as presets (`eth`, `arb`; only `b2` is not in presets). The bot's ⚠️ network notice uses it: a chain is troubled when *no* node is healthy |
+| `rpcs.meson.fi/` | yes | `{success, data: {<chainId>: [nodes]}}` — every chain's RPC nodes as Meson sees them: `healthy`, `latency`, `lastBlockNumber`, `lastBlockTimestamp`, `gasPrice` — 44 chains, keyed by the same ids as presets (`eth`, `arb`). The bot's ⚠️ network notice uses it: a chain is troubled when *no* node is healthy |
 
 Not found (404): `/api/v1/{rules,pending,lp,pool,relayer(s),rpcs,chains,list,status,health,banners,rewards,pinned-messages}` on the explorer; `/api/v1/{price,status}`, `/api/v2/swap/temp` and `abstract-initiator/<address>` (GET) on the relayer.
 
@@ -170,7 +171,8 @@ Received amount = `amount - srFee - lpFee`. The encoded `fee` equals `lpFee`; `s
 ## Chain and token names
 
 Only one published source carries both `shortSlip44` and `tokenIndex`: the explorer's preset table, embedded in a webpack chunk (not served from any endpoint).
-`scripts/refresh-presets.mjs` extracts it into `src/presets.json` (89 mainnet chains as of 2026-10-28).
+`fetchLiveChains` in `src/presets.js` extracts it: `scripts/refresh-presets.mjs` writes it to `src/presets.json` (89 mainnet chains as of 2026-10-28), and the running bot merges it into memory (at startup, every `PRESETS_REFRESH_HOURS`, and when a swap uses an unknown name).
+A read costs about 23 requests and 1.5 MB (2026-11-04). The bundle is what the explorer itself uses to show a swap, so a chain Meson adds appears there as soon as the explorer can name it.
 
 **The bundle ships two preset generations.** The older one has global token indexes (`1=USDC, 2=USDT`); the current one has per-chain indexes where BNB's `34` is `BSC-USD`.
 The extractor takes **later definitions win** — getting this backwards silently mislabels every token on chains that were re-indexed.
@@ -277,7 +279,6 @@ Source-side events (posted, bonded, executed, cancelled) are on the **in** chain
   The batch form `/api/v1/swap/<id>,<id>` is covered: if it stops working, `getSwaps` falls back to single lookups and logs it.
   The documented relayer endpoints could stand in for status, chains, tokens and amounts, but not for wallet addresses or the explorer's exact status.
 - If the explorer changes its status function, our port silently disagrees with it — `src/explorer-check.js` detects that daily and logs a warning; re-port then.
-- If the explorer bundle's preset layout changes, `refresh-presets.mjs` throws rather than writing a truncated table (it requires ≥40 chains).
-- New chains and tokens show up as `Unknown chain (0x…)` / `token#NN` until `npm run refresh-presets` is run.
+- If the explorer bundle's preset layout changes, reading the table fails rather than using a truncated one (it requires ≥40 chains, and every chunk read): the bot logs `!! could not read Meson's chain and token table` and keeps its current table, so existing names stay right but new chains and tokens show up as `Unknown chain (0x…)` / `token#NN` until the extractor is fixed.
 - The API never reports *when* a swap failed or was cancelled — only `released` (a real completion time) and `expireTs` (when it stops being executable).
   Don't compute a "took X" duration from `expireTs` for a non-released swap (the bot now shows only the request time anyway); it measures time to expiry, not time to failure, and the two can differ by over an hour.

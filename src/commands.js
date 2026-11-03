@@ -12,7 +12,7 @@
 
 import { MessageFlags, SlashCommandBuilder } from 'discord.js'
 import { lookupSwap, SwapNotFound } from './meson.js'
-import { extractCandidates } from './extract.js'
+import { extractCandidates, extractAddressCandidates } from './extract.js'
 import { buildSwapEmbed, buildNotFoundEmbed, QUERY_WRONG_CHANNEL_MESSAGE } from './render.js'
 import { inReplyCategory } from './discord-util.js'
 
@@ -64,7 +64,8 @@ async function handleMesonQuery (interaction) {
   const isPrivate = interaction.options.getBoolean('private') ?? false
   await interaction.deferReply(isPrivate ? { flags: MessageFlags.Ephemeral } : {})
 
-  const candidates = extractCandidates(query)
+  // The wallet-shaped values too: a Sui transaction hash has a wallet's shape, and only Meson's search can tell.
+  const candidates = [...extractCandidates(query), ...extractAddressCandidates(query, { allowFallback: false })]
   if (!candidates.length) {
     await interaction.editReply({
       embeds: [buildNotFoundEmbed(null, { hint: 'That does not look like a swap ID, a transaction hash or an explorer link.' })],

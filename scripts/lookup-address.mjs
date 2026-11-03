@@ -1,10 +1,10 @@
 /**
  * CLI: list a wallet's swaps (one page, or the ticket's unfinished view). Never connects to Discord, but loads `.env` (the --unfinished view uses its ADDRESS_* limits, exactly as a ticket does).
  *
- *   npm run lookup-address -- 0x91ce0e9676397b160e88a6789253d77bbeb87460
- *   npm run lookup-address -- 0x91ce0e9676397b160e88a6789253d77bbeb87460 2
- *   npm run lookup-address -- https://explorer.meson.fi/address/0x91ce0e...
- *   npm run lookup-address -- 0x91ce0e9676397b160e88a6789253d77bbeb87460 --unfinished
+ *   npm run lookup-address -- <wallet address>
+ *   npm run lookup-address -- <wallet address> 2
+ *   npm run lookup-address -- https://explorer.meson.fi/address/<wallet address>
+ *   npm run lookup-address -- <wallet address> --unfinished
  *
  * --unfinished runs the ticket auto-detect view instead: only swaps that are not finished (Done, Released or Cancelled), within the lookback window.
  */

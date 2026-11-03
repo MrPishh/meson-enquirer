@@ -42,7 +42,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { checkDocs, MD_TOC_START, MD_TOC_END } from './doc-checks.mjs'
 
 const ROOT = new URL('../', import.meta.url)
-const DIRS = ['src', 'scripts']
+const DIRS = ['src', 'scripts', 'test']
 // CLAUDE.md is always loaded whole (a Contents block would only cost tokens); CODE_INDEX.md has its own.
 const MD_SKIP = ['CLAUDE.md', 'CODE_INDEX.md']
 // Docs shorter than this get no Contents block — they are cheap to read whole.
@@ -394,7 +394,7 @@ async function build () {
 }
 
 /**
- * --watch: rebuild whenever a code file under src/ or scripts/, or a doc in the project root, is saved — for edits made outside Claude Code (an editor), which the hooks do not see.
+ * --watch: rebuild whenever a code file under src/, scripts/ or test/, or a doc in the project root, is saved — for edits made outside Claude Code (an editor), which the hooks do not see.
  * Our own rewrites trigger one more event, whose pass finds nothing to change, so it settles.
  * A half-saved file that fails to parse is logged, not fatal.
  */
@@ -417,7 +417,7 @@ async function watch () {
     if (name && name.endsWith('.md') && name !== 'CODE_INDEX.md') schedule()
   })
   await build()
-  console.log('watching src/, scripts/ and the docs — the index updates on every save (Ctrl+C to stop)')
+  console.log('watching src/, scripts/, test/ and the docs — the index updates on every save (Ctrl+C to stop)')
 }
 
 ;(WATCH ? watch() : build()).catch((err) => { console.error(err); process.exit(1) })

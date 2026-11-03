@@ -95,6 +95,9 @@ export const config = {
   // Compare the explorer's own status function with our port this often (explorer-check.js); a change is logged as a warning. 0 = never.
   explorerCheckMs: number('EXPLORER_CHECK_HOURS', 0) * 60 * 60 * 1000,
 
+  // Read Meson's live chain and token table this often, so new ones are known without a restart (meson.js refreshPresets). 0 = only when a swap uses an unknown chain or token.
+  presetsRefreshMs: number('PRESETS_REFRESH_HOURS', 0) * 60 * 60 * 1000,
+
   // Every repeated wait (swap re-checks, retries) is made randomly up to this many percent shorter or longer, so requests never come at a fixed beat. 0 = exact intervals.
   jitterPercent: number('JITTER_PERCENT', 0),
 }

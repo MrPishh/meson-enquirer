@@ -170,13 +170,13 @@ export function checkDocs ({ root, parsed, commands }) {
   return { errors, warnings }
 }
 
-/** Every file in src/ and scripts/ has a row in the CLAUDE.md file map, and every row names a file that exists. */
+/** Every file in src/, scripts/ and test/ has a row in the CLAUDE.md file map, and every row names a file that exists. */
 function checkFileMap (root, claude, errors) {
   const rows = tableUnder(claude, 'File map')
   if (!rows) return errors.push('CLAUDE.md: no "File map" table')
   const listed = new Set(rows.map((r) => ticks(r[0])[0]).filter(Boolean))
   for (const f of listed) if (!existsSync(new URL(f, root))) errors.push(`CLAUDE.md file map: ${f} does not exist`)
-  for (const dir of ['src', 'scripts']) {
+  for (const dir of ['src', 'scripts', 'test']) {
     for (const name of readdirSync(new URL(`${dir}/`, root))) {
       if (!listed.has(`${dir}/${name}`)) errors.push(`CLAUDE.md file map: ${dir}/${name} has no row`)
     }
