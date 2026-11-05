@@ -1,4 +1,4 @@
-Last description review: 2026-11-04 (changed-scope: fixes from the codebase audit, live chain and token table, tests).
+Last description review: 2026-11-05 (full: every doc, code comment, setting note and user-facing text read against the code).
 It covers the project up to and including the commit that last changed this file:
   git log -1 --format=%h -- .claude/last-description-review
 The next review only needs to look at what changed after that commit:

@@ -8,7 +8,7 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 
 1. **In:** Discord delivers ticket messages (Ticket Tool's form, the user's own messages) and `/meson-query`; `src/index.js` wires these events and, at startup, starts recovery and the explorer check.
 2. **Tickets** (`tickets.js`): find swap-shaped values in the text (`extract.js`), look them up (`meson.js`), post the details embed (`render.js`).
-3. **Following** (`watch.js`): one shared check round re-checks every open swap, in batches; it edits the embed and posts ⏳ / ✅ / ↩️.
+3. **Following** (`watch.js`): one shared check round re-checks every open swap, in batches; it edits the embed and posts ⏳ / 🔎 / ✅ / ↩️.
 4. **Memory** (`ticket-state.js`) lives in memory only; after a restart, **recovery** (`recover.js`) rebuilds it from the bot's own Discord messages.
 5. **Meson side** (`meson.js`): the explorer API (search, swap, batch, address) and `rpcs.meson.fi` for the network notice; `decode.js` unpacks the encoded swap, `presets.js` names chains and tokens, `explorer-check.js` watches the explorer's status logic.
 
@@ -52,7 +52,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | `src/index.js` | Entry point only: Discord client, event wiring, startup log + `recoverTickets` + `startExplorerCheck`, crash guards (client `error`, `unhandledRejection`) |
 | `src/config.js` | Every `.env` setting, parsed once → `config` |
 | `src/tickets.js` | Ticket auto-reply: `onTicketMessage` → `admitMessage` → `handleTicketMessage` → `postSwap` / `postWalletSwaps`; retrying a message while Meson is down (`queueMessage`, `retryDelay`, `worthRetrying`) |
-| `src/watch.js` | Follow-up after a swap is posted: ⏳ / closing message, the shared batched check round (`runRound`), embed edits; `syncFollowUps` keeps earlier ⏳ / closing messages labelled |
+| `src/watch.js` | Follow-up after a swap is posted: ⏳ / 🔎 (`syncSupport`) / closing message, the shared batched check round (`runRound`), embed edits; `syncFollowUps` keeps earlier ⏳ / 🔎 / closing messages labelled |
 | `src/ticket-state.js` | Per-ticket memory: swaps shown, known IDs/hashes, serial numbers, "closing soon" rule |
 | `src/recover.js` | Restart recovery: on startup rebuilds every ticket from the bot's own messages, resumes its watches, handles messages missed while down |
 | `src/commands.js` | Slash command definitions (`COMMANDS`) + handlers |
@@ -86,12 +86,12 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 
 | Task | Go to |
 | --- | --- |
-| Change any wording the user sees (embeds, ⏳, ✅, ↩️, ❓) | `src/render.js` |
+| Change any wording the user sees (embeds, ⏳, 🔎, ✅, ↩️, ❓) | `src/render.js`; the status reasons and support notes are in `statusFor` and `deriveStatus`, `src/meson.js` |
 | Change where the bot replies / whose ticket messages are ignored (staff) | `canReply`, `isStaff` in `src/discord-util.js` (`REPLY_CATEGORY_IDS`, `STAFF_ROLE_IDS`) |
 | Change what counts as a swap ID / encoding / hash / wallet | `extractCandidates`, `extractAddressCandidates` in `src/extract.js` |
 | Change what happens when a ticket message arrives | `handleTicketMessage` in `src/tickets.js` |
 | Change the wallet fallback (which swaps, how far back) | `postWalletSwaps` (`src/tickets.js`), `listUnfinishedSwapsForAddress` (`src/meson.js`), `buildUnfinishedAddressEmbeds` (`src/render.js`) |
-| Change follow-ups, polling speed, when the ⏳ is removed | `watchSwap`, `watchDelay`, `ageOf`, `runRound` (the shared check round), `applyCheck`, `postProcessing`, `withdrawProcessing` in `src/watch.js` |
+| Change follow-ups, polling speed, when the ⏳ is removed | `watchSwap`, `watchDelay`, `ageOf`, `runRound` (the shared check round), `applyCheck`, `postProcessing`, `syncSupport`, `withdrawProcessing` in `src/watch.js` |
 | Change when a Releasing swap counts as stuck | `deriveStatus` in `src/meson.js` (`RELEASING_STUCK_AFTER_MINUTES`) |
 | Change what happens while Meson is down (retries, back-off, random spacing) | `getJson` (quick retries), `jitter` in `src/meson.js`; `queueMessage`, `retryDelay`, `worthRetrying` in `src/tickets.js`; `claim` in `src/recover.js` (`MESON_*`, `TICKET_RETRY_*`, `JITTER_PERCENT`) |
 | Change the explorer status check (when, how it compares) | `checkExplorerStatus`, `startExplorerCheck`, `PORTED_FINGERPRINT` in `src/explorer-check.js` (`EXPLORER_CHECK_HOURS`) |
@@ -133,9 +133,9 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
    If the user's pasted ID was not found, the wallet embed says so (no separate ❓).
 4. **❓ "couldn't find"** — only for the user's own message (never the form, which is full of Discord IDs), only if nothing in it resolved and the wallet fallback did not run (or ran and Meson rejected the address).
 5. `postSwap` → details embed (reply to the user's message, or plain send for the form).
-   From the 2nd swap on, embeds, ⏳ lines and closing messages carry `#n` — #1's embed, ⏳ and closing message are re-rendered, so every swap's messages are always labelled alike.
+   From the 2nd swap on, embeds, ⏳ / 🔎 lines and closing messages carry `#n` — #1's embed, ⏳ / 🔎 and closing message are re-rendered, so every swap's messages are always labelled alike.
    Each new swap also re-renders the earlier closing messages (`syncFollowUps`, `src/watch.js`): "ticket will be closed soon" is dropped from them while the new swap is open.
-   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ (only if `status.ok`; a failed post is retried by the re-checks, so it never ends the follow-up), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ line.
+   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ if `status.ok` or 🔎 if not (a failed post is retried by the re-checks, so it never ends the follow-up), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change, change the ⏳ to 🔎 and back as `status.ok` changes (`syncSupport`), and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ / 🔎 line.
 
 ### Statuses
 
@@ -143,17 +143,19 @@ The API has no status field. **The heading is always what the Meson explorer sho
 `src/explorer-check.js` compares the explorer's live status function with our port at startup and every `EXPLORER_CHECK_HOURS` (fingerprint with minified names blanked, so a redeploy alone does not trip it) and logs `!! Meson's explorer changed its status function` when it differs — then re-port, re-verify on real swaps and update `PORTED_FINGERPRINT`.
 The explorer's `*` (e.g. "Expired*") is kept: it is `status.star`, shown after `status.label` wherever a status is displayed — code checks only `status.label`.
 
-| Status | Meaning | ⏳ line | Closing message | In wallet list | Watched |
+Every status has a reason on the details embed (`status.detail`, what the status means). A swap the team has to step in on also has `status.supportNote`, the 🔎 reply.
+
+| Status | Meaning | Status reply | Closing message | In wallet list | Watched |
 | --- | --- | --- | --- | --- | --- |
-| Pending / Requesting / Posted / Bonded / Locked | still moving (whatever the explorer shows before executed confirms) | yes | — | yes | yes |
-| Releasing | executed has confirmed (even past the deadline), or a release is requested / confirming / being retried | yes | — | yes | yes |
-| Releasing (stuck) | still Releasing `RELEASING_STUCK_AFTER_MINUTES` past the deadline; shown as "taking longer than usual — our support team will look into it" (`status.stuck`) — the heading still says Releasing | no (removed if it had one) | — (✅/↩️ once resolved) | yes (🔴) | yes |
+| Pending / Requesting / Posted / Bonded / Locked | still moving (whatever the explorer shows before executed confirms) | ⏳ | — | yes | yes |
+| Releasing | executed has confirmed (even past the deadline), or a release is requested / confirming / being retried | ⏳ | — | yes | yes |
+| Releasing (stuck) | still Releasing `RELEASING_STUCK_AFTER_MINUTES` past the deadline (`status.stuck`) — the heading still says Releasing | 🔎 "taking longer than usual", funds are safe, support will look into it | — (✅/↩️ once resolved) | yes (🔴) | yes |
 | Done | released to the recipient | — | ✅ Transaction Completed | no | stops |
 | Released | released, LP has not executed yet — complete for the user | — | ✅ Transaction Completed | no | stops |
 | Cancelled | funds returned to the initiator | — | ↩️ Transaction Cancelled | no | stops |
-| Expired | past deadline before executed; shown as "not completed in time — our support team will look into it" — support may still cancel/refund or complete it, so nothing is promised about the outcome | no | — (✅/↩️ once resolved) | yes | yes |
-| Unlocked | LP lock undone; shown as "did not go through — our support team will look into it" | no | — (✅/↩️ once resolved) | yes | yes |
-| Failed | only failed attempts so far (rare: any other step outranks it); shown as "a step of this transaction failed — our support team will look into it" | no | — (✅/↩️ once resolved) | yes | yes |
+| Expired | past deadline before executed — support may still cancel/refund or complete it, so nothing is promised about the outcome | 🔎 "not completed in time", funds are safe, support will look into it | — (✅/↩️ once resolved) | yes | yes |
+| Unlocked | LP lock undone | 🔎 "did not go through", funds are safe, support will look into it | — (✅/↩️ once resolved) | yes | yes |
+| Failed | only failed attempts so far (rare: any other step outranks it) | 🔎 "a step failed", funds are safe, support will look into it | — (✅/↩️ once resolved) | yes | yes |
 
 "Finished" (`isFinished`) = Done, Released or Cancelled. "Ticket will be closed soon" goes only on the closing message of the swap that finishes last — when every *other* swap in the ticket is finished too; earlier closing messages lose it when a new swap joins and never get it back.
 
@@ -171,8 +173,9 @@ The bot runs under **pm2** as `meson-bot` (defined in `ecosystem.config.cjs`), a
 
 ```bash
 pm2 restart meson-bot       # pick up code / .env changes
-pm2 logs meson-bot          # live log (startup line, posted swaps, errors)
+pm2 logs meson-bot          # live log (startup line, posted swaps, errors), each line with an ISO timestamp (log_date_format in ecosystem.config.cjs)
 pm2 save                    # after adding/removing pm2 apps, so reboots restore them
+pm2 restart ecosystem.config.cjs --only meson-bot   # after changing ecosystem.config.cjs (a plain restart does not re-read it); then pm2 save
 ```
 
 Start-on-reboot: the Windows scheduled task "PM2 Resurrect on Login" runs `pm2 resurrect` at login, restoring everything last `pm2 save`d.
@@ -220,11 +223,11 @@ npm run index:watch         # rebuild on every save while editing by hand
 - **The address endpoint has no total count and `size` ≤ 20.** `list.length === size` is the only "maybe more" signal; it has no status or date filter (checked — `failed=true` is accepted but only filters for Meson's admins), so filtering is done locally and bounded by `ADDRESS_LOOKBACK_DAYS` / `ADDRESS_MAX_PAGES`.
 - **The ⚠️ network notice is only a hint.** `fetchChainHealth` swallows every error (logged) and returns "no known problems"; a health failure must never fail a swap lookup, and a slow check delays one by at most `MESON_TIMEOUT_SECONDS` (it has no retries). One cached request (`CHAIN_HEALTH_CACHE_SECONDS`) serves every lookup.
 - **Releasing never becomes Expired** (the explorer checks EXECUTED before the deadline), so a release that never comes would look "in progress" forever. Hence `status.stuck` (`deriveStatus`, `RELEASING_STUCK_AFTER_MINUTES`; of 137 observed swaps the latest finished 8 minutes past its deadline), and a swap is never dropped: after `SWAP_WATCH_LONG_AFTER_HOURS` it is checked every `SWAP_WATCH_LONG_INTERVAL_MINUTES` until it finishes or its ticket is closed.
-- **A ⏳ only while the swap moves normally.** When `status.ok` turns false (stuck, Expired…), `withdrawProcessing` removes the ⏳ — in a check round and on restart recovery.
+- **A ⏳ only while the swap moves normally.** When `status.ok` turns false (stuck, Expired…), `syncSupport` edits the ⏳ into the 🔎 reply, and back if the swap moves again — in a check round and on restart recovery. An edit does not notify anyone, so a user whose ⏳ changes is not pinged; a swap first seen stuck gets a new 🔎 reply.
 - **Descriptions must stay true.** The checks above prove that docs *point* to real things, not that they *say* the right thing. After any change in behaviour, review every description of it (docs, comments, user-facing text) and record the review in `.claude/last-description-review` — the next review starts from the commit that last changed that file.
 - **Never publish secrets.** `.env` (bot token, server/channel/role IDs) and every `.env.*` variant except `.env.example` are git-ignored — keep it that way, keep the token and every ID out of `.env.example` (only non-secret values like `AUTO_SCAN_MESSAGES=6`), and never paste real IDs or tokens into code or docs.
   Throwaway test scripts go in a temp folder, not the project.
-- **All state is in memory** (`ticket-state.js`, `watch.js`), and **Discord is the backup**: on startup, and after a reconnect that needed a new Discord session (messages are not replayed then), `recover.js` reads every ticket channel, rebuilds each ticket from the bot's own messages (details embeds in posting order = `#n`; ⏳ / ✅ / ↩️ by the embed they reply to; wallet embeds), resumes every unfinished swap (`watchSwap` `resumed` — no second ⏳; a swap that finished while down gets its closing message) and handles messages posted after the bot's last one as if new. Live messages wait in the ticket queue until its recovery is done.
+- **All state is in memory** (`ticket-state.js`, `watch.js`), and **Discord is the backup**: on startup, and after a reconnect that needed a new Discord session (messages are not replayed then), `recover.js` reads every ticket channel, rebuilds each ticket from the bot's own messages (details embeds in posting order = `#n`; ⏳ / 🔎 / ✅ / ↩️ by the embed they reply to; wallet embeds), resumes every unfinished swap (`watchSwap` `resumed` — no second ⏳; a swap that finished while down gets its closing message) and handles messages posted after the bot's last one as if new. Live messages wait in the ticket queue until its recovery is done.
   So **the bot's message formats are its saved state**: changing a title, a URL, a follow-up's first characters or the reply-to structure means changing the readers in `render.js` § Recognising our own messages too, or tickets stop being recovered. The bot writes no file anywhere (only the dev tooling writes: the generated index files and the Stop hook's fingerprint in `.git/`).
 
 ## Deliberate choices
@@ -235,7 +238,7 @@ These were decided for the circumstances at the time, and may change — they ar
 - No API key anywhere; every endpoint used is public.
 - Addresses and hashes are shown **in full**, not truncated — staff copy them.
 - The details embed is edited in place (silent); the closing message is a new reply (notifies the user). Embeds are never deleted and re-posted.
-  The ⏳ line is the one message the bot deletes — once the closing message is up (also after a restart, via recovery).
-  ⏳ and closing messages are edited only to renumber them or drop "closed soon" when another swap joins the ticket (silent edits).
-- User-facing follow-ups (⏳, ✅, ↩️, ❓) are plain text, not embeds.
+  The ⏳ / 🔎 line is the one message the bot deletes — once the closing message is up (also after a restart, via recovery).
+  ⏳ / 🔎 and closing messages are edited only to change between ⏳ and 🔎, renumber them or drop "closed soon" when another swap joins the ticket (silent edits).
+- User-facing follow-ups (⏳, 🔎, ✅, ↩️, ❓) are plain text, not embeds. The embed's description gives the status reason; "our support team will look into it" is in the 🔎 reply, not the embed (except on `/meson-query`, which has no reply).
 - The ⏳ is posted straight away. Holding it back for fast swaps was built and removed: people open a ticket only once a swap has looked stuck for a while, so the ⏳ should reassure at once — don't re-add it unasked.

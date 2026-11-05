@@ -110,4 +110,8 @@ process.on('unhandledRejection', (err) => console.error('unhandled error —', e
 //   Login
 // =============================================================================
 
-client.login(config.token)
+// Without a login the bot can do nothing: exit, so pm2 tries again (for example when the PC has no network yet right after a reboot).
+client.login(config.token).catch((err) => {
+  console.error('!! could not log in to Discord —', err.message)
+  process.exit(1)
+})

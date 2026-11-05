@@ -26,6 +26,7 @@ for (const query of candidates.length ? candidates : [input]) {
     const s = await lookupSwap(query)
     console.log(`matched     ${query}`)
     console.log(`status      ${s.status.label}${s.status.star}${s.status.detail ? ` (${s.status.detail})` : ''}`)
+    if (s.status.supportNote) console.log(`support     ${s.status.supportNote}`)
     console.log(`swap id     ${s.swapId}`)
     console.log(`from        ${s.from.chain} — ${s.from.amount} ${s.from.token}`)
     console.log(`            ${s.from.address}`)

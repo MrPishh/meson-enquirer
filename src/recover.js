@@ -1,8 +1,8 @@
 /**
  * Restart recovery: rebuilds every open ticket from the bot's own messages in it, so a restart drops no follow-up.
  *
- * Ticket state is in memory only (ticket-state.js, watch.js), but Discord already holds what it described: each swap's details embed (its swap ID, in posting order = its "#n") and the ⏳ / ✅ / ↩️ replies to it.
- * On startup each ticket channel's history is read, the ticket rebuilt, and every unfinished swap re-checked and followed again (watchSwap `resumed`: no second ⏳; a swap that finished while the bot was down gets its closing message now).
+ * Ticket state is in memory only (ticket-state.js, watch.js), but Discord already holds what it described: each swap's details embed (its swap ID, in posting order = its "#n") and the ⏳ / 🔎 / ✅ / ↩️ replies to it.
+ * On startup each ticket channel's history is read, the ticket rebuilt, and every unfinished swap re-checked and followed again (watchSwap `resumed`: no second ⏳; a swap that finished while the bot was down gets its closing message now, and one that became stuck its 🔎).
  * Messages posted after the bot's last message — missed while it was down — are then handled as if they had just arrived (admitMessage).
  * Live messages for a ticket wait in its queue until its recovery is done, so none is handled against an empty ticket.
  */
@@ -11,11 +11,11 @@
 // L34     STARTED_AT
 // L37     HISTORY_PAGES
 // L47     recoverTickets()
-// L64     claim()
-// L79     tryRecover()
-// L98   Rebuilding one ticket
-// L103    readHistory()
-// L119    recoverTicket()
+// L65     claim()
+// L81     tryRecover()
+// L100  Rebuilding one ticket
+// L105    readHistory()
+// L121    recoverTicket()
 // ----- end of contents -----
 
 import { config } from './config.js'
@@ -60,10 +60,12 @@ export async function recoverTickets (client) {
 /**
  * Put a channel's recovery at the front of its ticket queue.
  * If Meson is down, the ticket is retried until it works, backing off like a ticket message (retryDelay) — with its live messages still waiting behind; it stops only when the ticket is gone or Discord refused (worthRetrying).
+ * After a reconnect a message may still be in hand: recovery waits for it, or it would rebuild the ticket from history read before that message's swap was posted, and lose the swap.
  */
 function claim (channel) {
   const t = getTicket(channel.id)
-  const first = chain.then(() => tryRecover(t, channel))
+  const inHand = t.queue
+  const first = chain.then(() => inHand).then(() => tryRecover(t, channel))
   chain = first
   t.queue = t.queue.then(() => first).then(async (ok) => {
     for (let attempt = 1; ok === false; attempt++) {
@@ -123,7 +125,7 @@ async function recoverTicket (t, channel) {
   // The bot's own messages: details embeds (in posting order), wallet embeds, and follow-ups by the embed they reply to.
   const found = []
   const addresses = new Set()
-  const followUps = new Map() // details message ID → { processing, outcome }
+  const followUps = new Map() // details message ID → { processing, support, outcome }
   let lastOwn = -1
   history.forEach((m, i) => {
     // /meson-query answers are not part of the ticket's own flow.
@@ -161,6 +163,7 @@ async function recoverTicket (t, channel) {
     message: f.message,
     latest,
     processing: followUps.get(f.message.id)?.processing ?? null,
+    support: followUps.get(f.message.id)?.support ?? null,
     outcome: followUps.get(f.message.id)?.outcome,
   }))
   for (const e of t.swaps) rememberSwap(t, e.latest)

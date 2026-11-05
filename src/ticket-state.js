@@ -19,8 +19,8 @@
 import { isFinished } from './meson.js'
 
 /**
- * @typedef {{n: number, swapId: string, message: import('discord.js').Message, latest: object, processing?: import('discord.js').Message|null, outcome?: import('discord.js').Message}} SwapEntry
- *   `processing` is the swap's ⏳ reply while it is up (deleted with the closing message); `outcome` is its ✅ / ↩️ closing message. Both are kept so a later swap can renumber them and drop "closed soon" (syncFollowUps in watch.js).
+ * @typedef {{n: number, swapId: string, message: import('discord.js').Message, latest: object, processing?: import('discord.js').Message|null, support?: import('discord.js').Message|null, outcome?: import('discord.js').Message}} SwapEntry
+ *   `processing` is the swap's ⏳ reply while it is up (deleted with the closing message); `support` is its 🔎 reply while the team has to step in (deleted when the swap moves again or finishes); `outcome` is its ✅ / ↩️ closing message. All are kept so a later swap can renumber them and drop "closed soon" (syncFollowUps in watch.js).
  * @typedef {{
  *   admitted: Set<string>,    // message IDs already taken in, so one seen both live and in recovery is handled once
  *   botMessagesSeen: number,  // other bots' messages read so far (capped by AUTO_SCAN_MESSAGES)

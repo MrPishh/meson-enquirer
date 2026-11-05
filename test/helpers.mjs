@@ -9,12 +9,12 @@
 // L52     swapId()
 // L55     encodedSwap()
 // L64     json()
-// L74     stubMeson()
-// L90   Fake Discord
-// L95     sleep()
-// L98     makeWorld()
-// L134    refusal()
-// L137    texts()
+// L76     stubMeson()
+// L92   Fake Discord
+// L97     sleep()
+// L100    makeWorld()
+// L136    refusal()
+// L139    texts()
 // ----- end of contents -----
 
 import { readFileSync } from 'node:fs'
@@ -51,9 +51,9 @@ export const DONE = [{ name: 'EXECUTED', hash: '0xaa' }, { name: 'RELEASED', has
 /** A swap ID made from one repeated character. */
 export const swapId = (c) => '0x' + String(c).repeat(64)
 
-/** An encoded swap from BNB token 34 (or `outChain`) to Solana token 2, with a deadline an hour away. */
-export function encodedSwap ({ outChain = '02ca', outToken = '22' } = {}) {
-  const deadline = Math.floor(Date.now() / 1000) + 3600
+/** An encoded swap from BNB token 34 (or `outChain`) to Solana token 2, with a deadline an hour away (or `deadlineIn` seconds). */
+export function encodedSwap ({ outChain = '02ca', outToken = '22', deadlineIn = 3600 } = {}) {
+  const deadline = Math.floor(Date.now() / 1000) + deadlineIn
   return `0x01${(5000000).toString(16).padStart(10, '0')}${'00'.repeat(10)}${'00'.repeat(5)}${deadline.toString(16).padStart(10, '0')}${outChain}${outToken}01f502`
 }
 
@@ -69,9 +69,11 @@ export const json = (body, status = 200) => new Response(JSON.stringify(body), {
  * @param {Record<string, object[]>} [world.events] each swap's current events, by swap ID
  * @param {Record<string, object>} [world.search] what the search answers, by query (default: not found)
  * @param {string[]} [world.bad] swap IDs whose record is malformed
+ * @param {string[]} [world.overdue] swap IDs whose deadline passed long ago
+ * @param {string[]} [world.distant] swap IDs whose deadline is a day away
  * @returns {{requests: number}} a live count of swap requests
  */
-export function stubMeson ({ events = {}, search = {}, bad = [] } = {}) {
+export function stubMeson ({ events = {}, search = {}, bad = [], overdue = [], distant = [] } = {}) {
   const count = { requests: 0 }
   globalThis.fetch = async (url) => {
     const u = String(url)
@@ -81,7 +83,7 @@ export function stubMeson ({ events = {}, search = {}, bad = [] } = {}) {
     if (u.includes('/address/')) return json({ result: { list: [] } })
     count.requests++
     const ids = u.match(/\/api\/v1\/swap\/(.+)$/)[1].split(/,|%2C/)
-    const records = ids.map((id) => swapRecord(id, events[id] ?? MOVING, bad.includes(id) ? 'garbage' : undefined))
+    const records = ids.map((id) => swapRecord(id, events[id] ?? MOVING, bad.includes(id) ? 'garbage' : overdue.includes(id) ? encodedSwap({ deadlineIn: -86400 }) : distant.includes(id) ? encodedSwap({ deadlineIn: 86400 }) : undefined))
     return json({ result: ids.length > 1 ? records : records[0] })
   }
   return count

@@ -23,38 +23,38 @@
 // L136    fetchSwap()
 // L142  Status
 // L147    EXPLORER_STEP_RANK
-// L153    explorerStatus()
-// L183    deriveStatus()
-// L197    statusFor()
-// L223    isFinished()
-// L225  Swap view
-// L230    TARGET_CHAIN_STEPS
-// L233    toDate()
-// L236    toSwapView()
-// L296    viewOf()
-// L305  Chain and token table
-// L310    UNKNOWN_REFRESH_GAP_MS
-// L313    REFRESH_WAIT_MS
-// L316    presetRead
-// L322    refreshPresets()
-// L339    usesUnknownName()
-// L352    ensureNamesKnown()
-// L363    startPresetRefresh()
-// L369  Chain health
-// L374    RPCS
-// L383    troubledChainIds()
-// L391    fetchChainHealth()
-// L414    addChainHealth()
-// L423  Single swap
-// L432    lookupSwap()
-// L437    getSwap()
-// L447    SWAP_BATCH_SIZE
-// L450    BATCH_PAUSE_MS
-// L462    getSwaps()
-// L506  Wallet swaps
-// L517    listSwapsForAddress()
-// L536    MAX_PAGE_SIZE
-// L550    listUnfinishedSwapsForAddress()
+// L154    explorerStatus()
+// L185    deriveStatus()
+// L200    statusFor()
+// L231    isFinished()
+// L233  Swap view
+// L238    TARGET_CHAIN_STEPS
+// L241    toDate()
+// L244    toSwapView()
+// L305    viewOf()
+// L314  Chain and token table
+// L319    UNKNOWN_REFRESH_GAP_MS
+// L322    REFRESH_WAIT_MS
+// L325    presetRead
+// L331    refreshPresets()
+// L348    usesUnknownName()
+// L361    ensureNamesKnown()
+// L372    startPresetRefresh()
+// L378  Chain health
+// L383    RPCS
+// L392    troubledChainIds()
+// L400    fetchChainHealth()
+// L423    addChainHealth()
+// L432  Single swap
+// L441    lookupSwap()
+// L446    getSwap()
+// L456    SWAP_BATCH_SIZE
+// L459    BATCH_PAUSE_MS
+// L471    getSwaps()
+// L515  Wallet swaps
+// L526    listSwapsForAddress()
+// L545    MAX_PAGE_SIZE
+// L559    listUnfinishedSwapsForAddress()
 // ----- end of contents -----
 
 import { config } from './config.js'
@@ -148,7 +148,8 @@ const EXPLORER_STEP_RANK = ['FAILED', 'PENDING', 'REQUESTING', 'POSTED', 'BONDED
 
 /**
  * The status the Meson explorer shows for a swap — a line-for-line port of its own function (explorer bundle, called with the swap's events and `expireTs`), so the bot's heading always matches the explorer.
- * Returns the explorer's raw label, e.g. `DONE`, `RELEASING...`, `EXPIRED*`; a trailing `*` means an LP lock is still outstanding. See CONTEXT.md § Status derivation.
+ * Returns the explorer's raw label, e.g. `DONE`, `RELEASING...`, `EXPIRED*`; a trailing `*` means an LP lock is still outstanding (on `EXPIRED*`: funds were taken on-chain). See CONTEXT.md § Status derivation.
+ * Like the explorer's, it returns undefined when no event has a hash or is a request yet; deriveStatus shows that as Pending.
  */
 function explorerStatus (events, expireTs) {
   const named = events.filter((e) => e.name)
@@ -177,41 +178,48 @@ function explorerStatus (events, expireTs) {
 
 /**
  * Derive the display status: the explorer's own label (explorerStatus), title-cased, plus what the bot does with it.
- * `label` is the bare word the code checks ("Expired"); `star` is the explorer's `*` (an LP lock still outstanding), shown after it wherever the status is displayed ("Expired*").
+ * `label` is the bare word the code checks ("Expired"); `star` is the explorer's `*` (explorerStatus says what it means), shown after it wherever the status is displayed ("Expired*").
  * `done` + `ok`: Done / Released are finished (✅), Cancelled is finished (↩️); `ok` false means no ⏳ "completed shortly" promise. `stuck`: a Releasing swap well past its deadline (RELEASING_STUCK_AFTER_MINUTES).
+ * `detail` is what the status means, for the embed's description; `supportNote` is the 🔎 reply posted while the team has to step in.
  */
 function deriveStatus (raw, decoded) {
   const events = Array.isArray(raw.events) ? raw.events : []
-  const shown = explorerStatus(events, decoded.expireTs)
+  const shown = explorerStatus(events, decoded.expireTs) ?? ''
   const star = shown.includes('*') ? '*' : ''
-  const status = { ...statusFor(shown.replace(/[*.]+$/, '')), star, stuck: false }
-  // Releasing never turns into Expired, so a release that never comes would read as "in progress" forever. Well past the deadline it is stuck (of 137 observed swaps, the latest completed 8 min past it): the heading stays the explorer's, but it reads like the other stuck statuses and gets no ⏳ promise.
+  const lpHasFunds = events.some((e) => e.name === 'EXECUTED' && e.hash && !e.pending)
+  const status = { ...statusFor(shown.replace(/[*.]+$/, ''), lpHasFunds), star, stuck: false }
+  // Releasing never turns into Expired, so a release that never comes would read as "in progress" forever. Well past the deadline it is stuck (of 137 observed swaps, the latest completed 8 min past it): the heading and reason stay as they are, but it gets the support note instead of the ⏳ promise.
   const pastDeadlineMs = Date.now() - decoded.expireTs * 1000
   if (status.label === 'Releasing' && config.releasingStuckAfterMs > 0 && decoded.expireTs && pastDeadlineMs > config.releasingStuckAfterMs) {
-    return { ...status, ok: false, stuck: true, detail: 'this transaction is taking longer than usual — our support team will look into it' }
+    return { ...status, ok: false, stuck: true, supportNote: 'Sorry for the delay — this transaction is taking longer than usual. Your funds are safe, and our support team will look into it.' }
   }
   return status
 }
 
-/** What the bot does with each explorer label (without its `*` / `...`). */
-function statusFor (label) {
+/** What each explorer label (without its `*` / `...`) means and what the bot does with it. `lpHasFunds`: EXECUTED has confirmed, which a Releasing swap does not always have. */
+function statusFor (label, lpHasFunds) {
   switch (label) {
-    case 'DONE': return { label: 'Done', detail: null, done: true, ok: true }
+    case 'DONE': return { label: 'Done', detail: 'The funds have been released to the recipient.', supportNote: null, done: true, ok: true }
     // Released before the LP has executed — the recipient already has the funds.
-    case 'RELEASED': return { label: 'Released', detail: null, done: true, ok: true }
-    case 'CANCELLED': return { label: 'Cancelled', detail: null, done: true, ok: false }
-    case 'RELEASING': return { label: 'Releasing', detail: null, done: false, ok: true }
+    case 'RELEASED': return { label: 'Released', detail: 'The funds have been released to the recipient.', supportNote: null, done: true, ok: true }
+    case 'CANCELLED': return { label: 'Cancelled', detail: 'The funds have been returned to the sending address.', supportNote: null, done: true, ok: false }
+    case 'RELEASING': return { label: 'Releasing', detail: lpHasFunds ? 'The funds have been received by the LP and are being released to the recipient.' : 'The funds are being released to the recipient.', supportNote: null, done: false, ok: true }
     // The three "stuck" statuses say what happened and that support will act — never how it ends (support may refund it or push it through).
     // UNLOCKED: the LP's lock on the target chain was undone.
-    case 'UNLOCKED': return { label: 'Unlocked', detail: 'the swap did not go through — our support team will look into it', done: false, ok: false }
-    case 'FAILED': return { label: 'Failed', detail: 'a step of this transaction failed — our support team will look into it', done: false, ok: false }
+    case 'UNLOCKED': return { label: 'Unlocked', detail: 'The LP\'s lock on the destination chain was undone.', supportNote: 'Sorry — this transaction did not go through. Your funds are safe, and our support team will look into it.', done: false, ok: false }
+    case 'FAILED': return { label: 'Failed', detail: 'A step of this transaction failed.', supportNote: 'Sorry — a step of this transaction failed. Your funds are safe, and our support team will look into it.', done: false, ok: false }
     case 'EXPIRED':
-      // No promise about the outcome: support may cancel and refund it, or complete it from the contract — wording like "funds stay with the sender" or "can no longer go through" can be wrong.
-      return { label: 'Expired', detail: 'the swap was not completed in time — our support team will look into it', done: false, ok: false }
-    case '':
-    case 'PENDING': return { label: 'Pending', detail: null, done: false, ok: true }
-    // REQUESTING / POSTED / BONDED / LOCKED (or a step the explorer adds later): its own word, still moving.
-    default: return { label: label.charAt(0) + label.slice(1).toLowerCase(), detail: null, done: false, ok: true }
+      // No promise about the outcome: support may cancel and refund it, or complete it from the contract — wording like "funds stay with the sender" or "can no longer go through" can be wrong. "Your funds are safe" was asked for by the team (2026-11-05).
+      return { label: 'Expired', detail: 'The deadline for this swap passed before it was completed.', supportNote: 'Sorry — this swap passed its deadline and was not completed in time. Your funds are safe, and our support team will look into it.', done: false, ok: false }
+    // Nothing on-chain or requested yet, so nothing is confirming.
+    case '': return { label: 'Pending', detail: 'This swap is waiting for its first on-chain transaction.', supportNote: null, done: false, ok: true }
+    case 'PENDING': return { label: 'Pending', detail: 'A transaction for this swap is confirming on the blockchain.', supportNote: null, done: false, ok: true }
+    case 'REQUESTING': return { label: 'Requesting', detail: 'The swap has been requested, and has no on-chain transaction yet.', supportNote: null, done: false, ok: true }
+    case 'POSTED': return { label: 'Posted', detail: 'The funds have been posted to the Meson contract.', supportNote: null, done: false, ok: true }
+    case 'BONDED': return { label: 'Bonded', detail: 'An LP has taken on this swap.', supportNote: null, done: false, ok: true }
+    case 'LOCKED': return { label: 'Locked', detail: 'The LP has locked funds for this swap on the destination chain.', supportNote: null, done: false, ok: true }
+    // A step the explorer adds later: its own word, still moving, with no reason until we know what it means.
+    default: return { label: label.charAt(0) + label.slice(1).toLowerCase(), detail: null, supportNote: null, done: false, ok: true }
   }
 }
 
@@ -234,6 +242,7 @@ const toDate = (v) => (v ? new Date(v) : null)
 
 /** Turn one raw swap record (single, batch or address endpoint — all the same shape) into the flat, display-ready view. */
 function toSwapView (raw) {
+  if (typeof raw._id !== 'string') throw new Error('it has no swap ID')
   const decoded = decodeEncodedSwap(raw.encoded)
   const [fromAddress, toAddress] = Array.isArray(raw.fromTo) ? raw.fromTo : [null, null]
 

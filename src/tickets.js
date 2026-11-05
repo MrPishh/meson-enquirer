@@ -174,7 +174,7 @@ async function showSwap (t, message, query, fromUser) {
 }
 
 /**
- * Post a newly found swap — as a reply when the user pasted it mid-ticket, so it is clear what the bot is answering. When a second swap arrives, the first embed, its ⏳ and its closing message are re-rendered to show its "#1"; every earlier closing message also loses "ticket will be closed soon" while the new swap is open.
+ * Post a newly found swap — as a reply when the user pasted it mid-ticket, so it is clear what the bot is answering. When a second swap arrives, the first embed, its ⏳ / 🔎 and its closing message are re-rendered to show its "#1"; every earlier closing message also loses "ticket will be closed soon" while the new swap is open.
  */
 async function postSwap (t, message, swap, fromUser) {
   const n = t.swaps.length + 1
@@ -185,7 +185,7 @@ async function postSwap (t, message, swap, fromUser) {
   t.swaps.push(entry)
 
   if (n === 2) await t.swaps[0].message.edit({ embeds: [detailsEmbed(t, t.swaps[0])] }).catch(() => {})
-  // Earlier swaps' ⏳ / closing message: "Swap #1" once there are two, and no "closed soon" while this one is open.
+  // Earlier swaps' ⏳ / 🔎 / closing message: "Swap #1" once there are two, and no "closed soon" while this one is open.
   for (const e of t.swaps.slice(0, -1)) await syncFollowUps(t, e)
 
   watchSwap(t, entry).catch((err) => console.error(`#${message.channel.name}: outcome post failed —`, err.message))

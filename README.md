@@ -6,9 +6,9 @@ L52   Settings
 L116  Checking it works without Discord
 L130  What the user can paste
 L141  Behaviour in a ticket
-L159  Maintenance
-L171  For developers
-L180  License
+L160  Maintenance
+L172  For developers
+L181  License
 end of contents -->
 
 Meson Enquirer is a Discord bot for a Meson support server.
@@ -20,7 +20,7 @@ When someone opens a ticket and puts a swap ID, a transaction hash or an explore
 - one transaction hash per step (executed, releasing / released, cancelled, …), each linked to the right chain's explorer
 - request time, and the Meson explorer link
 
-It then follows the swap: the details update themselves as the status changes, and the user gets a **✅ Transaction Completed** or **↩️ Transaction Cancelled** message when it finishes.
+It then follows the swap: the details update themselves as the status changes, a reply tells the user it is being processed (or, if it runs into trouble, that the funds are safe and support will look into it), and the user gets a **✅ Transaction Completed** or **↩️ Transaction Cancelled** message when it finishes.
 
 If the ticket has only a wallet address, the bot lists that wallet's recent swaps that are **not** finished (done, released or cancelled).
 
@@ -75,11 +75,11 @@ IDs: turn on Developer Mode in Discord, then right-click the server / role → C
 
 | Setting | What it does |
 | --- | --- |
-| `SWAP_WATCH_INTERVAL_SECONDS` | Check this often at first — also how often the shared check round runs. `0` = don't follow swaps (no ⏳ line, and the closing note is only posted if the swap was already finished). |
+| `SWAP_WATCH_INTERVAL_SECONDS` | Check this often at first — also how often the shared check round runs. `0` = don't follow swaps (no ⏳ or 🔎 line, and the closing note is only posted if the swap was already finished). |
 | `SWAP_WATCH_SLOWER_AFTER_MINUTES` / `SWAP_WATCH_SLOWER_INTERVAL_SECONDS` | From this many minutes after the swap was requested, check this often instead (so a swap already old when its ticket opens starts on the slower checks). |
 | `SWAP_WATCH_SLOWEST_AFTER_MINUTES` / `SWAP_WATCH_SLOWEST_INTERVAL_SECONDS` | From this many minutes (not less than the line above), check this often. |
 | `SWAP_WATCH_LONG_AFTER_HOURS` / `SWAP_WATCH_LONG_INTERVAL_MINUTES` | Once a swap is this old (since it was requested), check it only this often. A swap is never dropped: it is followed until it finishes or its ticket is closed, so a late fix by the team still reaches the user. |
-| `RELEASING_STUCK_AFTER_MINUTES` | A swap still "Releasing" this long after its deadline counts as stuck: its details say "taking longer than usual — our support team will look into it", and it gets no ⏳ "completed shortly" line. `0` = never. |
+| `RELEASING_STUCK_AFTER_MINUTES` | A swap still "Releasing" this long after its deadline counts as stuck: its ⏳ "completed shortly" reply changes to 🔎 "taking longer than usual", which says the funds are safe and our support team will look into it. `0` = never. |
 
 **When Meson's site is down** — it sometimes serves an error page for a moment:
 
@@ -145,15 +145,16 @@ Some chains' values look alike (a Sui hash looks like a Solana wallet, a Sui wal
 - **Follow-ups**, as plain-text replies to the swap's embed (numbered "Swap #n" like the embeds when there are several):
   - ⏳ "being processed" while a swap is moving normally — deleted once the closing message is posted;
   - ✅ Transaction Completed / ↩️ Transaction Cancelled when it finishes — plus "this ticket will be closed soon" once every swap in the ticket is finished (if another swap is added later, the earlier messages get their "Swap #1" and lose "closed soon" for good — it goes on the closing message of whichever swap finishes last);
-  - Expired, Unlocked, Failed and stuck swaps (still Releasing well past their deadline) get no ⏳ — and lose one they had — since "completed shortly" no longer holds; the bot keeps watching and posts ✅ / ↩️ once the team resolves them.
+  - 🔎 instead of the ⏳ for Expired, Unlocked, Failed and stuck swaps (still Releasing well past their deadline), since "completed shortly" no longer holds: it says what is wrong, that the funds are safe and that our support team will look into it. A ⏳ already up is edited into the 🔎 (and back if the swap moves again); the bot keeps watching, and the ✅ / ↩️ replaces it once the team resolves the swap.
+- **Status reason.** The details embed's description says what the current status means (for example "The funds have been received by the LP and are being released to the recipient."). `/meson-query` adds the support note there too, as it has no 🔎 reply.
 - **Transaction hashes:** one entry per step, in process order, with the latest hash — failed attempts next to a successful one are not listed (they stay on the explorer); a step that has only failed so far is marked "(failed)". The release reads releasing → releasing (confirming) → released.
 - **Live updates.** The details embed is edited in place as the status changes (timing: the `SWAP_WATCH_*` settings).
 - **Network notice.** While a swap is unfinished and Meson can't reach its source or destination chain, the details embed says so ("⚠️ Network notice — Arbitrum is having network problems right now, which can delay this swap."). It goes away by itself once the chain is healthy again.
 - **Wallet only.** If no swap is found and the ticket shows none yet, the bot lists the wallet's unfinished swaps (limits: the `ADDRESS_*` settings). A wallet pasted after a swap is shown is ignored.
 - **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so. The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
 - **Meson down never loses a ticket.** If Meson can't be reached or rejects requests, the bot keeps retrying (the `TICKET_RETRY_*` settings) until the ticket is answered, and keeps following posted swaps through the outage. It stops only when the ticket is closed or Discord refuses the bot's post (e.g. missing permissions); a swap is followed until it finishes or its ticket is closed.
-- **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, posting ✅ / ↩️, removing ⏳ — including for swaps that finished while it was down) and answers messages users sent while it was offline. It does the same after a long connection drop.
-- **A failed post is tried again.** If Discord fails while the bot posts a ⏳ or closing message, the next check tries again. If Discord refuses (e.g. missing permissions), it waits an hour between tries, and carries on once access returns.
+- **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, changing ⏳ to 🔎, posting ✅ / ↩️ — including for swaps that became stuck or finished while it was down) and answers messages users sent while it was offline. It does the same after a long connection drop.
+- **A failed post is tried again.** If Discord fails while the bot posts a ⏳, 🔎 or closing message, the next check tries again. If Discord refuses (e.g. missing permissions), it waits an hour between tries, and carries on once access returns.
 - **New chains and tokens.** When Meson adds one, the bot picks up its name from Meson's live table, even if the swap is its first sight of it. If the table cannot be read at that moment, the embed shows `Unknown chain (0x…)` or `token#34` rather than a guess, and corrects itself once the table is read.
 
 ## Maintenance
