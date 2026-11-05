@@ -6,9 +6,9 @@ L52   Settings
 L116  Checking it works without Discord
 L130  What the user can paste
 L141  Behaviour in a ticket
-L160  Maintenance
-L172  For developers
-L181  License
+L161  Maintenance
+L173  For developers
+L182  License
 end of contents -->
 
 Meson Enquirer is a Discord bot for a Meson support server.
@@ -22,7 +22,7 @@ When someone opens a ticket and puts a swap ID, a transaction hash or an explore
 
 It then follows the swap: the details update themselves as the status changes, a reply tells the user it is being processed (or, if it runs into trouble, that the funds are safe and support will look into it), and the user gets a **✅ Transaction Completed** or **↩️ Transaction Cancelled** message when it finishes.
 
-If the ticket has only a wallet address, the bot lists that wallet's recent swaps that are **not** finished (done, released or cancelled).
+If the ticket has only a wallet address, the bot lists that wallet's recent swaps that are **not** finished (done, released or cancelled). A wallet that has never used Meson gets no reply, because the server also supports other projects.
 
 In those same ticket channels, anyone can also run `/meson-query` with a swap ID, source/destination hash or explorer link to see one swap's details. To limit who can use it, go to **Server Settings → Integrations → (the bot)**.
 
@@ -150,8 +150,9 @@ Some chains' values look alike (a Sui hash looks like a Solana wallet, a Sui wal
 - **Transaction hashes:** one entry per step, in process order, with the latest hash — failed attempts next to a successful one are not listed (they stay on the explorer); a step that has only failed so far is marked "(failed)". The release reads releasing → releasing (confirming) → released.
 - **Live updates.** The details embed is edited in place as the status changes (timing: the `SWAP_WATCH_*` settings).
 - **Network notice.** While a swap is unfinished and Meson can't reach its source or destination chain, the details embed says so ("⚠️ Network notice — Arbitrum is having network problems right now, which can delay this swap."). It goes away by itself once the chain is healthy again.
-- **Wallet only.** If no swap is found and the ticket shows none yet, the bot lists the wallet's unfinished swaps (limits: the `ADDRESS_*` settings). A wallet pasted after a swap is shown is ignored.
-- **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so. The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
+- **Wallet only.** If no swap is found and the ticket shows none yet, the bot lists the wallet's unfinished swaps (limits: the `ADDRESS_*` settings). If there are none it says so, and that it only checked Meson swaps. A wallet that has never used Meson gets no reply at all: the server also supports other projects whose forms ask for a wallet, and people do not always pick the right ticket category. A wallet pasted after a swap is shown is ignored.
+- **No repeats.** A swap, wallet or unknown value pasted again gets no second reply in that ticket, also after a restart.
+- **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so, once per value (it still looks the value up each time, in case the swap has appeared since). The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
 - **Meson down never loses a ticket.** If Meson can't be reached or rejects requests, the bot keeps retrying (the `TICKET_RETRY_*` settings) until the ticket is answered, and keeps following posted swaps through the outage. It stops only when the ticket is closed or Discord refuses the bot's post (e.g. missing permissions); a swap is followed until it finishes or its ticket is closed.
 - **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, changing ⏳ to 🔎, posting ✅ / ↩️ — including for swaps that became stuck or finished while it was down) and answers messages users sent while it was offline. It does the same after a long connection drop.
 - **A failed post is tried again.** If Discord fails while the bot posts a ⏳, 🔎 or closing message, the next check tries again. If Discord refuses (e.g. missing permissions), it waits an hour between tries, and carries on once access returns.

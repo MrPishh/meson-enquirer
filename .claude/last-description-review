@@ -1,4 +1,4 @@
-Last description review: 2026-11-05 (full: every doc, code comment, setting note and user-facing text read against the code).
+Last description review: 2026-11-05 (changed-scope: wallet replies for a server shared with another project, no repeated replies, the "couldn't find" wording).
 It covers the project up to and including the commit that last changed this file:
   git log -1 --format=%h -- .claude/last-description-review
 The next review only needs to look at what changed after that commit:

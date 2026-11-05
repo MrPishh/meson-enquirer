@@ -9,12 +9,12 @@
 // L52     swapId()
 // L55     encodedSwap()
 // L64     json()
-// L76     stubMeson()
-// L92   Fake Discord
-// L97     sleep()
-// L100    makeWorld()
-// L136    refusal()
-// L139    texts()
+// L77     stubMeson()
+// L93   Fake Discord
+// L98     sleep()
+// L101    makeWorld()
+// L137    refusal()
+// L140    texts()
 // ----- end of contents -----
 
 import { readFileSync } from 'node:fs'
@@ -71,16 +71,17 @@ export const json = (body, status = 200) => new Response(JSON.stringify(body), {
  * @param {string[]} [world.bad] swap IDs whose record is malformed
  * @param {string[]} [world.overdue] swap IDs whose deadline passed long ago
  * @param {string[]} [world.distant] swap IDs whose deadline is a day away
+ * @param {object[]} [world.walletSwaps] raw swap records every wallet has (default: none, a wallet that has never used Meson)
  * @returns {{requests: number}} a live count of swap requests
  */
-export function stubMeson ({ events = {}, search = {}, bad = [], overdue = [], distant = [] } = {}) {
+export function stubMeson ({ events = {}, search = {}, bad = [], overdue = [], distant = [], walletSwaps = [] } = {}) {
   const count = { requests: 0 }
   globalThis.fetch = async (url) => {
     const u = String(url)
     if (u.includes('rpcs.meson.fi')) return json({ data: {} })
     const q = u.match(/\/search\?q=(.+)$/)
     if (q) return search[decodeURIComponent(q[1])] ? json({ result: search[decodeURIComponent(q[1])] }) : json({ error: { message: 'Swap not found' } }, 404)
-    if (u.includes('/address/')) return json({ result: { list: [] } })
+    if (u.includes('/address/')) return json({ result: { list: walletSwaps } })
     count.requests++
     const ids = u.match(/\/api\/v1\/swap\/(.+)$/)[1].split(/,|%2C/)
     const records = ids.map((id) => swapRecord(id, events[id] ?? MOVING, bad.includes(id) ? 'garbage' : overdue.includes(id) ? encodedSwap({ deadlineIn: -86400 }) : distant.includes(id) ? encodedSwap({ deadlineIn: 86400 }) : undefined))
