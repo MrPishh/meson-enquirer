@@ -21,6 +21,18 @@ test('no ⏳ is posted, because nothing would ever take it down', async () => {
   assert.equal(world.posted.length, 0)
 })
 
+test('no 🔎 is posted either, for the same reason', async () => {
+  const id = swapId(3)
+  stubMeson({ events: { [id]: [{ name: 'EXECUTED:FAILED', hash: '0xaa' }] } })
+  const world = makeWorld('n3')
+  const t = getTicket(world.channel.id)
+  const entry = { n: 1, swapId: id, message: world.message(1, world.me), latest: (await getSwaps([id])).get(id) }
+  assert.ok(entry.latest.status.supportNote)
+  t.swaps.push(entry)
+  await watchSwap(t, entry)
+  assert.equal(world.posted.length, 0)
+})
+
 test('a swap already finished still gets its closing message', async () => {
   const id = swapId(2)
   stubMeson({ events: { [id]: DONE } })

@@ -7,7 +7,7 @@
 *.bak
 
 # Personal Claude Code settings (the shared .claude/settings.json IS kept —
-# it only registers the code-index hook, no secrets).
+# it only registers the code-index and doc-check hooks, no secrets).
 .claude/settings.local.json
 
 # ---- dependencies and logs -------------------------------------------------

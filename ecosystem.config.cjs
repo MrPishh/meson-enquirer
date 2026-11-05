@@ -17,6 +17,8 @@ module.exports = {
       // Back off between crash restarts instead of hammering Discord's login.
       restart_delay: 5000,
       exp_backoff_restart_delay: 1000,
+      // pm2 stamps every line it captures, so Node's own crash output gets a time too: ISO 8601 with this PC's UTC offset.
+      log_date_format: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
     },
   ],
 }

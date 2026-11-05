@@ -5,12 +5,12 @@
 // L19  Permission & member checks
 // L24    inReplyCategory()
 // L34    canReply()
-// L43    isStaff()
-// L48  Message helpers
-// L53    messageText()
-// L65    quietReply()
-// L70    CHANNEL_GONE
-// L73    discordRefused()
+// L44    isStaff()
+// L49  Message helpers
+// L54    messageText()
+// L66    quietReply()
+// L71    CHANNEL_GONE
+// L74    discordRefused()
 // ----- end of contents -----
 
 import { DiscordAPIError, PermissionFlagsBits } from 'discord.js'
@@ -36,7 +36,8 @@ export function canReply (channel) {
   if (!me || !channel.permissionsFor) return false
   if (!inReplyCategory(channel)) return false
   const send = channel.isThread?.() ? PermissionFlagsBits.SendMessagesInThreads : PermissionFlagsBits.SendMessages
-  return channel.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, send, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ReadMessageHistory])
+  // permissionsFor gives null when Discord's data is incomplete (a thread whose parent is not cached). This runs directly in the message event, so it must not throw.
+  return channel.permissionsFor(me)?.has([PermissionFlagsBits.ViewChannel, send, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ReadMessageHistory]) ?? false
 }
 
 /** Does this member hold a STAFF_ROLE_IDS role? (Their ticket messages are ignored.) */

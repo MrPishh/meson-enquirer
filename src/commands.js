@@ -77,7 +77,7 @@ async function handleMesonQuery (interaction) {
     for (const query of candidates) {
       try {
         const swap = await lookupSwap(query)
-        await interaction.editReply({ embeds: [buildSwapEmbed(swap, { requestedBy: interaction.user.username })] })
+        await interaction.editReply({ embeds: [buildSwapEmbed(swap, { requestedBy: interaction.user.username, withSupportNote: true })] })
         return
       } catch (err) {
         if (!(err instanceof SwapNotFound)) throw err

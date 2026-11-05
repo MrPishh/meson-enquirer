@@ -45,7 +45,7 @@ A support ticket needs: transaction hash, from chain, to chain, amount, wallet a
 | **Expiry (`expireTs`)** | The swap's deadline; a swap that has not executed by then shows as Expired (an hour earlier if nothing went on-chain at all). An executed swap never expires — it stays Releasing |
 | **Status** | What the explorer shows for a swap (Pending, Releasing, Done…) — worked out from its events, not stored by Meson |
 | **Ticket / form** | A Discord support channel opened with Ticket Tool; the form is Ticket Tool's first message, holding what the user typed |
-| **Details embed** | The bot's swap card in a ticket; the ⏳ line and the ✅ / ↩️ closing message are plain-text replies to it |
+| **Details embed** | The bot's swap card in a ticket; the ⏳ line, the 🔎 support reply and the ✅ / ↩️ closing message are plain-text replies to it |
 | **Check round** | The bot's shared, batched re-check of every followed swap |
 | **Preset** | The explorer's table of chain and token names (`src/presets.json`), keyed by `shortSlip44` (chain) and token index |
 
@@ -199,7 +199,7 @@ The bot now notices that itself: `src/explorer-check.js` (`npm run check-explore
 4. EXECUTED → **RELEASING...** (or **UNLOCKED** if there is an UNLOCKED). This is checked *before* the deadline, so an executed swap past `expireTs` is still Releasing; a pending or failed release also lands here, since EXECUTED outranks both.
 5. RELEASING (the hashless request) → **RELEASING** if funds were taken on-chain (a hashed POSTED / BONDED / LOCKED / EXECUTED), else treated as REQUESTING.
 6. Past the deadline → **EXPIRED** (`EXPIRED*` if funds were taken). With nothing on-chain the deadline counts as `expireTs − 3600`.
-7. Otherwise **LOCKED** if an LP lock is outstanding, else the furthest step itself (PENDING, REQUESTING, BONDED, FAILED…).
+7. Otherwise **LOCKED** if an LP lock is outstanding, else the furthest step itself (PENDING, REQUESTING, BONDED, FAILED…). If no event has a hash or ends in `ING`, there is no furthest step and the function returns nothing; the bot shows that as Pending, as it does a swap with no events.
 
 ### The `*` and how the bot writes a status
 
@@ -241,7 +241,7 @@ The bot treats only **Done**, **Released** and **Cancelled** as finished (`isFin
 If it *was* POSTED, the funds are in the contract until a CANCELLED returns them.
 The docs say an API-submitted swap expires after 10 minutes if blocked, but the window in `expireTs` varies (≈90 min has been observed).
 
-Because of that, the bot's Expired text says only **"the swap was not completed in time — our support team will look into it"** — nothing about where the funds are or whether it can still go through. Failed and Unlocked follow the same pattern — what happened, then "our support team will look into it" — and promise nothing about the outcome either.
+Because of that, the bot's Expired reply says **"Sorry — this swap passed its deadline and was not completed in time. Your funds are safe, and our support team will look into it."** — nothing about where the funds are or whether it can still go through. Failed, Unlocked and stuck Releasing follow the same pattern — what happened, "your funds are safe" (asked for by the team, 2026-11-05), then "our support team will look into it" — and promise nothing about the outcome either.
 Support may be able to cancel and refund it, or (if the funds are in the contract) push it to completion, so any stronger wording could be wrong.
 
 ### REQUESTING
