@@ -98,7 +98,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | Change how a status is worked out | `explorerStatus` (port of the explorer's — re-port, don't tune) and `deriveStatus` in `src/meson.js` (+ `CONTEXT.md` § Status derivation) |
 | Change the ⚠️ network notice (when it shows, wording) | `troubledChainIds`, `addChainHealth` in `src/meson.js` (`CHAIN_HEALTH_CACHE_SECONDS`); `buildChainNotice` in `src/render.js` |
 | Change the transaction hashes list (step order, names, what is hidden) | `STEP_ORDER`, `txSteps`, `txValue` in `src/render.js` |
-| Change what happens after a restart | `recoverTicket` in `src/recover.js`; the readers `readSwapEmbed`, `readWalletEmbed`, `followUpKind` in `src/render.js` (keep them in step with the message builders) |
+| Change what happens after a restart | `recoverTicket` in `src/recover.js`; the readers `readSwapEmbed`, `readWalletEmbed`, `readToldValues`, `followUpKind` in `src/render.js` (keep them in step with the message builders) |
 | Change serial numbers / "ticket will be closed soon" | `serialOf`, `outcomeOpts` in `src/ticket-state.js`; re-rendering earlier ⏳ / closing messages: `syncFollowUps` in `src/watch.js` |
 | Change the navigation index or what the doc checks enforce | `withToc`, `withMdToc`, `buildCodeIndex` in `scripts/build-index.mjs`; `checkDocs` in `scripts/doc-checks.mjs`; the Stop hook in `scripts/stop-hook.mjs` |
 | Change how new chains and tokens are picked up | `refreshPresets`, `ensureNamesKnown`, `startPresetRefresh` in `src/meson.js`; `fetchLiveChains`, `mergeChains` in `src/presets.js` (`PRESETS_REFRESH_HOURS`) |
@@ -129,9 +129,10 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
    (A "swap ID before hash" two-pass lookup was tried and removed: it changed nothing.) Values already known to the ticket are skipped without a lookup; each new swap found is posted (`postSwap`); one already shown is ignored.
 3. **Wallet fallback** (`postWalletSwaps`, lookup priority 5 — after the four above) — only if nothing swap-shaped resolved *and* the ticket shows no swap yet, once per address.
    Shapes overlap, so Meson's search decides what a value is: a Sui hash has a wallet's shape and is posted as a swap (also in a ticket already showing one), and a Sui or Starknet wallet has a swap ID's shape and is listed as a wallet.
-   Lists the wallet's swaps that are not finished (Done, Released or Cancelled).
+   Lists the wallet's swaps that are not finished (Done, Released or Cancelled); a wallet that has never used Meson gets no reply (see "Deliberate choices").
    If the user's pasted ID was not found, the wallet embed says so (no separate ❓).
-4. **❓ "couldn't find"** — only for the user's own message (never the form, which is full of Discord IDs), only if nothing in it resolved and the wallet fallback did not run (or ran and Meson rejected the address).
+4. **❓ "couldn't find"** — only for the user's own message (never the form, which is full of Discord IDs), only if nothing in it resolved and the wallet fallback posted nothing (it did not run, Meson rejected the address, or the wallet has never used Meson).
+   Once per value per ticket (`told` in `src/ticket-state.js`, rebuilt by `readToldValues`); the value is still looked up each time, as a swap can appear later. A wallet embed naming the value counts as telling the user.
 5. `postSwap` → details embed (reply to the user's message, or plain send for the form).
    From the 2nd swap on, embeds, ⏳ / 🔎 lines and closing messages carry `#n` — #1's embed, ⏳ / 🔎 and closing message are re-rendered, so every swap's messages are always labelled alike.
    Each new swap also re-renders the earlier closing messages (`syncFollowUps`, `src/watch.js`): "ticket will be closed soon" is dropped from them while the new swap is open.
@@ -227,7 +228,7 @@ npm run index:watch         # rebuild on every save while editing by hand
 - **Descriptions must stay true.** The checks above prove that docs *point* to real things, not that they *say* the right thing. After any change in behaviour, review every description of it (docs, comments, user-facing text) and record the review in `.claude/last-description-review` — the next review starts from the commit that last changed that file.
 - **Never publish secrets.** `.env` (bot token, server/channel/role IDs) and every `.env.*` variant except `.env.example` are git-ignored — keep it that way, keep the token and every ID out of `.env.example` (only non-secret values like `AUTO_SCAN_MESSAGES=6`), and never paste real IDs or tokens into code or docs.
   Throwaway test scripts go in a temp folder, not the project.
-- **All state is in memory** (`ticket-state.js`, `watch.js`), and **Discord is the backup**: on startup, and after a reconnect that needed a new Discord session (messages are not replayed then), `recover.js` reads every ticket channel, rebuilds each ticket from the bot's own messages (details embeds in posting order = `#n`; ⏳ / 🔎 / ✅ / ↩️ by the embed they reply to; wallet embeds), resumes every unfinished swap (`watchSwap` `resumed` — no second ⏳; a swap that finished while down gets its closing message) and handles messages posted after the bot's last one as if new. Live messages wait in the ticket queue until its recovery is done.
+- **All state is in memory** (`ticket-state.js`, `watch.js`), and **Discord is the backup**: on startup, and after a reconnect that needed a new Discord session (messages are not replayed then), `recover.js` reads every ticket channel, rebuilds each ticket from the bot's own messages (details embeds in posting order = `#n`; ⏳ / 🔎 / ✅ / ↩️ by the embed they reply to; wallet embeds; values already answered with ❓), resumes every unfinished swap (`watchSwap` `resumed` — no second ⏳; a swap that finished while down gets its closing message) and handles messages posted after the bot's last one as if new. Live messages wait in the ticket queue until its recovery is done.
   So **the bot's message formats are its saved state**: changing a title, a URL, a follow-up's first characters or the reply-to structure means changing the readers in `render.js` § Recognising our own messages too, or tickets stop being recovered. The bot writes no file anywhere (only the dev tooling writes: the generated index files and the Stop hook's fingerprint in `.git/`).
 
 ## Deliberate choices
@@ -236,6 +237,7 @@ These were decided for the circumstances at the time, and may change — they ar
 
 - Uses `explorer.meson.fi/api/v1/*`, not the documented `relayer.meson.fi` API, whose swap endpoints carry event hashes, chains, tokens and amounts but no wallet addresses, failed attempts or pending flags — not enough for the details embed or the explorer's status. Other public Meson endpoints (limits, pool liquidity, chain RPC health) are listed in `CONTEXT.md` § Other public endpoints.
 - No API key anywhere; every endpoint used is public.
+- The server supports two projects, Meson and FreeTech, and only Meson's swaps can be looked up. FreeTech's form requires a wallet, and people do not always pick the right ticket category, so categories cannot keep the bot out of those tickets. So a wallet that has never used Meson gets no reply (`postWalletSwaps`), and the wallet embeds always name Meson (`buildUnfinishedAddressEmbeds`).
 - Addresses and hashes are shown **in full**, not truncated — staff copy them.
 - The details embed is edited in place (silent); the closing message is a new reply (notifies the user). Embeds are never deleted and re-posted.
   The ⏳ / 🔎 line is the one message the bot deletes — once the closing message is up (also after a restart, via recovery).

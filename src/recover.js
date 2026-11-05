@@ -20,7 +20,7 @@
 
 import { config } from './config.js'
 import { getSwaps, SWAP_BATCH_SIZE } from './meson.js'
-import { readSwapEmbed, readWalletEmbed, followUpKind } from './render.js'
+import { readSwapEmbed, readWalletEmbed, readToldValues, followUpKind } from './render.js'
 import { getTicket, forgetTicket, rememberSwap } from './ticket-state.js'
 import { watchSwap, syncFollowUps, stopWatchingChannel } from './watch.js'
 import { admitMessage, retryDelay, worthRetrying } from './tickets.js'
@@ -135,6 +135,7 @@ async function recoverTicket (t, channel) {
     if (swap && !found.some((f) => f.swapId === swap.swapId)) found.push({ ...swap, message: m })
     const wallet = readWalletEmbed(m.embeds[0])
     if (wallet) addresses.add(wallet.toLowerCase())
+    for (const value of readToldValues(m)) t.told.add(value.toLowerCase())
     const kind = followUpKind(m.content)
     const to = m.reference?.messageId
     if (to && kind) followUps.set(to, { ...followUps.get(to), [kind]: m })
@@ -142,6 +143,8 @@ async function recoverTicket (t, channel) {
   const handled = history.slice(0, lastOwn + 1)
   // After the bot's last message, as after a restart — plus, on a reconnect, anything since this process started: the bot can still post during a connection drop, so a message missed then can sit before its last post. admitMessage skips those it has already taken in.
   const missed = history.filter((m, i) => m.author.id !== me && (i > lastOwn || m.createdTimestamp >= STARTED_AT))
+  // Before the early return: a ticket showing only a wallet list must not get that list again when the wallet is pasted after a restart.
+  for (const a of addresses) t.addresses.add(a)
   if (!found.length && !missed.length) return
 
   // Re-check every swap, together (one request per SWAP_BATCH_SIZE); one Meson no longer knows is dropped (logged).
@@ -167,7 +170,6 @@ async function recoverTicket (t, channel) {
     outcome: followUps.get(f.message.id)?.outcome,
   }))
   for (const e of t.swaps) rememberSwap(t, e.latest)
-  for (const a of addresses) t.addresses.add(a)
   // Other bots' messages already behind the bot's last reply count as read (Ticket Tool's form).
   t.botMessagesSeen = Math.max(t.botMessagesSeen, Math.min(config.scanLimit, handled.filter((m) => m.author.bot && m.author.id !== me).length))
 
