@@ -71,6 +71,8 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | `test/bot.test.mjs` | `npm test`: follow-ups, restart recovery, bad records and ambiguous values, against fake Discord and Meson |
 | `test/presets.test.mjs` | `npm test`: new chains and tokens are picked up from the live table |
 | `test/no-follow.test.mjs` | `npm test`: behaviour with following switched off |
+| `test/bundle.test.mjs` | `npm test`: followed swaps checked together (`SWAP_WATCH_BUNDLE=true`), never with an extra request |
+| `test/no-bundle.test.mjs` | `npm test`: with `SWAP_WATCH_BUNDLE=false` each swap waits for its own interval |
 | `test/helpers.mjs` | The tests' fake settings, fake Meson and fake Discord |
 | `scripts/check-explorer.mjs` | `npm run check-explorer` — the explorer status check from the terminal (`--show` prints the explorer's function for re-porting) |
 | `scripts/build-index.mjs` | `npm run index` — rebuilds every file's Contents block, long docs' heading Contents blocks + `CODE_INDEX.md`, then runs the doc checks |
@@ -91,7 +93,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | Change what counts as a swap ID / encoding / hash / wallet | `extractCandidates`, `extractAddressCandidates` in `src/extract.js` |
 | Change what happens when a ticket message arrives | `handleTicketMessage` in `src/tickets.js` |
 | Change the wallet fallback (which swaps, how far back) | `postWalletSwaps` (`src/tickets.js`), `listUnfinishedSwapsForAddress` (`src/meson.js`), `buildUnfinishedAddressEmbeds` (`src/render.js`) |
-| Change follow-ups, polling speed, when the ⏳ is removed | `watchSwap`, `watchDelay`, `ageOf`, `runRound` (the shared check round), `applyCheck`, `postProcessing`, `syncSupport`, `withdrawProcessing` in `src/watch.js` |
+| Change follow-ups, polling speed, when the ⏳ is removed | `watchSwap`, `watchDelay`, `ageOf`, `runRound` (the shared check round), `pickForRound` (which swaps it checks; `SWAP_WATCH_BUNDLE`), `applyCheck`, `postProcessing`, `syncSupport`, `withdrawProcessing` in `src/watch.js` |
 | Change when a Releasing swap counts as stuck | `deriveStatus` in `src/meson.js` (`RELEASING_STUCK_AFTER_MINUTES`) |
 | Change what happens while Meson is down (retries, back-off, random spacing) | `getJson` (quick retries), `jitter` in `src/meson.js`; `queueMessage`, `retryDelay`, `worthRetrying` in `src/tickets.js`; `claim` in `src/recover.js` (`MESON_*`, `TICKET_RETRY_*`, `JITTER_PERCENT`) |
 | Change the explorer status check (when, how it compares) | `checkExplorerStatus`, `startExplorerCheck`, `PORTED_FINGERPRINT` in `src/explorer-check.js` (`EXPLORER_CHECK_HOURS`) |
@@ -136,7 +138,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 5. `postSwap` → details embed (reply to the user's message, or plain send for the form).
    From the 2nd swap on, embeds, ⏳ / 🔎 lines and closing messages carry `#n` — #1's embed, ⏳ / 🔎 and closing message are re-rendered, so every swap's messages are always labelled alike.
    Each new swap also re-renders the earlier closing messages (`syncFollowUps`, `src/watch.js`): "ticket will be closed soon" is dropped from them while the new swap is open.
-   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ if `status.ok` or 🔎 if not (a failed post is retried by the re-checks, so it never ends the follow-up), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`) — that edit the embed on change, change the ⏳ to 🔎 and back as `status.ok` changes (`syncSupport`), and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ / 🔎 line.
+   Then `watchSwap` (`src/watch.js`): closing message if already finished, else ⏳ if `status.ok` or 🔎 if not (a failed post is retried by the re-checks, so it never ends the follow-up), then background re-checks — one shared round for every watched swap in every ticket, batched into one Meson request per 20 swaps (`runRound`, `getSwaps`); with `SWAP_WATCH_BUNDLE=true` the swaps not yet due fill the spare places of that request (`pickForRound`), so every followed swap is checked together without an extra request — that edit the embed on change, change the ⏳ to 🔎 and back as `status.ok` changes (`syncSupport`), and reply with the closing message once finished (Done / Released / Cancelled), deleting the ⏳ / 🔎 line.
 
 ### Statuses
 

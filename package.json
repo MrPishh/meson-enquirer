@@ -16,7 +16,7 @@
     "lookup-address": "node scripts/lookup-address.mjs",
     "refresh-presets": "node scripts/refresh-presets.mjs",
     "check-explorer": "node scripts/check-explorer.mjs",
-    "test": "node --test --test-timeout=60000 test/bot.test.mjs test/presets.test.mjs test/no-follow.test.mjs",
+    "test": "node --test --test-timeout=60000 test/bot.test.mjs test/presets.test.mjs test/no-follow.test.mjs test/bundle.test.mjs test/no-bundle.test.mjs",
     "index": "node scripts/build-index.mjs",
     "index:watch": "node scripts/build-index.mjs --watch"
   },

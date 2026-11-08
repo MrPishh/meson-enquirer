@@ -19,7 +19,7 @@
 | File | Lines | Sections (start line) | Purpose |
 | --- | --- | --- | --- |
 | `src/commands.js` | 94 | Definitions (19) · Handlers (39) | Slash commands: definitions (registered by scripts/register-commands.mjs) and their handlers. |
-| `src/config.js` | 112 | Settings (17) | Every .env setting, parsed once. |
+| `src/config.js` | 122 | Settings (18) | Every .env setting, parsed once. |
 | `src/decode.js` | 76 | Decoding (31) · Formatting (55) | Decoder for Meson's 32-byte "encoded swap". |
 | `src/discord-util.js` | 75 | Permission & member checks (19) · Message helpers (49) | Small Discord helpers shared by the ticket flow and the slash command. |
 | `src/explorer-check.js` | 130 | Fingerprint (28) · Fetching (59) · Schedule (98) | Watches the Meson explorer's own status function — the one `explorerStatus` (src/meson.js) is a line-for-line port of — and warns in the log when Meson chang… |
@@ -31,7 +31,7 @@
 | `src/render.js` | 386 | Shared helpers (45) · Swap details embed (74) · Plain-text messages (181) · Wallet embeds (247) · Not-found embed (333) · Recognising our own messages (353) | Everything the bot posts: swap details embed, wallet (unfinished swaps) embeds, the plain-text ⏳ / 🔎 / closing / "couldn't find" messages, and the /meson-qu… |
 | `src/ticket-state.js` | 85 | State (35) · Helpers (63) | Per-ticket memory. |
 | `src/tickets.js` | 232 | Entry point (31) · Message handling (96) · Posting (157) | Ticket auto-reply: reads Ticket Tool's form embed and the user's later messages, and posts each new swap they name (then hands it to watchSwap). |
-| `src/watch.js` | 326 | Polling (44) · Watch lifecycle (235) | Keeps a posted swap current until it finishes. |
+| `src/watch.js` | 348 | Polling (45) · Watch lifecycle (257) | Keeps a posted swap current until it finishes. |
 | `scripts/build-index.mjs` | 424 | Parsing (61) · Contents block (148) · Markdown Contents block (181) · CODE_INDEX.md (222) · Main (340) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, the heading Contents block of every long doc (README.md… |
 | `scripts/check-explorer.mjs` | 22 | — | `npm run check-explorer` — check from the terminal whether the Meson explorer's status function still matches our port (`explorerStatus` in src/meson.js), th… |
 | `scripts/doc-checks.mjs` | 303 | Reading the docs (33) · Checks (132) | Doc-drift checks run by `npm run index` (scripts/build-index.mjs): the hand-written docs must point to things that exist, in the places they say. |
@@ -42,7 +42,9 @@
 | `scripts/register-commands.mjs` | 21 | — | Registers the bot's slash commands (defined in src/commands.js). |
 | `scripts/stop-hook.mjs` | 78 | Working-tree fingerprint (21) · Hook (44) | Claude Code Stop hook (.claude/settings.json): when Claude is about to finish a turn, rebuild the index and run `build-index.mjs --check`; if docs or index h… |
 | `test/bot.test.mjs` | 609 | Helpers (32) · A failed post never ends a follow-up (51) · Restart recovery (100) · Status reason and support reply (176) · A bad record from Meson (360) · Values whose shape does not say what they are (389) | The bot's behaviour under failure and its status replies, each test fake-driven (see helpers.mjs); most were written for a fault found in the codebase audits… |
-| `test/helpers.mjs` | 141 | Settings (23) · Fake Meson (41) · Fake Discord (93) | Shared by the tests: fake settings (the real `.env` and token are never used) and small fake Discord and Meson stand-ins, so nothing here contacts a real ser… |
+| `test/bundle.test.mjs` | 64 | Helpers (19) · Followed swaps are checked together (33) | Checking every followed swap together (SWAP_WATCH_BUNDLE=true): an old swap, normally checked only every SWAP_WATCH_LONG_INTERVAL_MINUTES, comes along in the… |
+| `test/helpers.mjs` | 143 | Settings (23) · Fake Meson (41) · Fake Discord (95) | Shared by the tests: fake settings (the real `.env` and token are never used) and small fake Discord and Meson stand-ins, so nothing here contacts a real ser… |
+| `test/no-bundle.test.mjs` | 40 | — | With SWAP_WATCH_BUNDLE=false each swap is checked only at its own interval, as before bundling. |
 | `test/no-follow.test.mjs` | 46 | — | With following switched off (SWAP_WATCH_INTERVAL_SECONDS=0). |
 | `test/presets.test.mjs` | 111 | Helpers (21) · Tests (46) | New chains and tokens: the bot learns them from Meson's live table, without a code change or restart. |
 
@@ -75,30 +77,31 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Env var | `config` key | Parsed at |
 | --- | --- | --- |
-| `BOT_TOKEN` | `token` | `src/config.js:55` |
-| `APPLICATION_ID` | `applicationId` | `src/config.js:56` |
-| `GUILD_ID` | `guildId` | `src/config.js:58` |
-| `REPLY_CATEGORY_IDS` | `replyCategories` | `src/config.js:61` |
-| `AUTO_SCAN_MESSAGES` | `scanLimit` | `src/config.js:64` |
-| `STAFF_ROLE_IDS` | `staffRoles` | `src/config.js:67` |
-| `ADDRESS_LOOKBACK_DAYS` | `addressLookbackDays` | `src/config.js:70` |
-| `ADDRESS_MAX_PAGES` | `addressMaxPages` | `src/config.js:71` |
-| `SWAP_WATCH_INTERVAL_SECONDS` | `watchIntervalMs` | `src/config.js:74` |
-| `SWAP_WATCH_SLOWER_AFTER_MINUTES` | `watchSlowerAfterMs` | `src/config.js:75` |
-| `SWAP_WATCH_SLOWER_INTERVAL_SECONDS` | `watchSlowerIntervalMs` | `src/config.js:76` |
-| `SWAP_WATCH_SLOWEST_AFTER_MINUTES` | `watchSlowestAfterMs` | `src/config.js:77` |
-| `SWAP_WATCH_SLOWEST_INTERVAL_SECONDS` | `watchSlowestIntervalMs` | `src/config.js:78` |
-| `SWAP_WATCH_LONG_AFTER_HOURS` | `watchLongAfterMs` | `src/config.js:80` |
-| `SWAP_WATCH_LONG_INTERVAL_MINUTES` | `watchLongIntervalMs` | `src/config.js:81` |
-| `RELEASING_STUCK_AFTER_MINUTES` | `releasingStuckAfterMs` | `src/config.js:83` |
-| `MESON_TIMEOUT_SECONDS` | `mesonTimeoutMs` | `src/config.js:86` |
-| `MESON_RETRIES` | `mesonRetries` | `src/config.js:87` |
-| `TICKET_RETRY_SECONDS` | `ticketRetryMs` | `src/config.js:89` |
-| `TICKET_RETRY_MAX_SECONDS` | `ticketRetryMaxMs` | `src/config.js:90` |
-| `CHAIN_HEALTH_CACHE_SECONDS` | `chainHealthMs` | `src/config.js:93` |
-| `EXPLORER_CHECK_HOURS` | `explorerCheckMs` | `src/config.js:96` |
-| `PRESETS_REFRESH_HOURS` | `presetsRefreshMs` | `src/config.js:99` |
-| `JITTER_PERCENT` | `jitterPercent` | `src/config.js:102` |
+| `BOT_TOKEN` | `token` | `src/config.js:63` |
+| `APPLICATION_ID` | `applicationId` | `src/config.js:64` |
+| `GUILD_ID` | `guildId` | `src/config.js:66` |
+| `REPLY_CATEGORY_IDS` | `replyCategories` | `src/config.js:69` |
+| `AUTO_SCAN_MESSAGES` | `scanLimit` | `src/config.js:72` |
+| `STAFF_ROLE_IDS` | `staffRoles` | `src/config.js:75` |
+| `ADDRESS_LOOKBACK_DAYS` | `addressLookbackDays` | `src/config.js:78` |
+| `ADDRESS_MAX_PAGES` | `addressMaxPages` | `src/config.js:79` |
+| `SWAP_WATCH_INTERVAL_SECONDS` | `watchIntervalMs` | `src/config.js:82` |
+| `SWAP_WATCH_SLOWER_AFTER_MINUTES` | `watchSlowerAfterMs` | `src/config.js:83` |
+| `SWAP_WATCH_SLOWER_INTERVAL_SECONDS` | `watchSlowerIntervalMs` | `src/config.js:84` |
+| `SWAP_WATCH_SLOWEST_AFTER_MINUTES` | `watchSlowestAfterMs` | `src/config.js:85` |
+| `SWAP_WATCH_SLOWEST_INTERVAL_SECONDS` | `watchSlowestIntervalMs` | `src/config.js:86` |
+| `SWAP_WATCH_LONG_AFTER_HOURS` | `watchLongAfterMs` | `src/config.js:88` |
+| `SWAP_WATCH_LONG_INTERVAL_MINUTES` | `watchLongIntervalMs` | `src/config.js:89` |
+| `SWAP_WATCH_BUNDLE` | `watchBundle` | `src/config.js:91` |
+| `RELEASING_STUCK_AFTER_MINUTES` | `releasingStuckAfterMs` | `src/config.js:93` |
+| `MESON_TIMEOUT_SECONDS` | `mesonTimeoutMs` | `src/config.js:96` |
+| `MESON_RETRIES` | `mesonRetries` | `src/config.js:97` |
+| `TICKET_RETRY_SECONDS` | `ticketRetryMs` | `src/config.js:99` |
+| `TICKET_RETRY_MAX_SECONDS` | `ticketRetryMaxMs` | `src/config.js:100` |
+| `CHAIN_HEALTH_CACHE_SECONDS` | `chainHealthMs` | `src/config.js:103` |
+| `EXPLORER_CHECK_HOURS` | `explorerCheckMs` | `src/config.js:106` |
+| `PRESETS_REFRESH_HOURS` | `presetsRefreshMs` | `src/config.js:109` |
+| `JITTER_PERCENT` | `jitterPercent` | `src/config.js:112` |
 
 ## Functions
 
@@ -115,11 +118,12 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `list` | Settings | `src/config.js:25` | "a, b,,c" -> ['a', 'b', 'c'] |
-| `fail` | Settings | `src/config.js:28` | Stops startup with a message pointing at .env. |
-| `setting` | Settings | `src/config.js:34` | The setting's text; its line must exist in .env, but may be blank. |
-| `required` | Settings | `src/config.js:40` | A setting that must be filled in. |
-| `number` | Settings | `src/config.js:47` | A setting that must be a whole number of at least `min`. |
+| `list` | Settings | `src/config.js:26` | "a, b,,c" -> ['a', 'b', 'c'] |
+| `fail` | Settings | `src/config.js:29` | Stops startup with a message pointing at .env. |
+| `setting` | Settings | `src/config.js:35` | The setting's text; its line must exist in .env, but may be blank. |
+| `required` | Settings | `src/config.js:41` | A setting that must be filled in. |
+| `number` | Settings | `src/config.js:48` | A setting that must be a whole number of at least `min`. |
+| `bool` | Settings | `src/config.js:55` | A setting that must be `true` or `false`. |
 
 ### src/decode.js
 
@@ -276,22 +280,23 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Function | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `fingerprint` | Polling | `src/watch.js:62` | Anything that should cause an embed edit: status (and whether it is stuck), each event's state, the network notice, and the chain and token names (a chain or… |
-| `watchDelay` | Polling | `src/watch.js:66` | Poll fast while a swap is likely to move, then back off (the SWAP_WATCH_* settings) — never stopping. |
-| `ageOf` | Polling | `src/watch.js:74` | How old a watched swap is: since it was requested (from Meson), or since the bot began watching it if that is unknown. |
-| `nextDue` | Polling | `src/watch.js:80` | When a just-checked swap is next due. |
-| `scheduleRound` | Polling | `src/watch.js:83` | Plan the next check round, unless one is planned or running, or nothing is watched. |
-| `runRound` | Polling | `src/watch.js:92` | One check round: every watched swap that is due is re-checked together — one Meson request per SWAP_BATCH_SIZE swaps (getSwaps), however many tickets they ar… |
-| `applyCheck` | Polling | `src/watch.js:126` | Act on one fresh look at a watched swap: edit the embed if it changed, post the closing message and stop once it is finished. |
-| `postClosing` | Polling | `src/watch.js:163` | Post a swap's closing message and take down its ⏳ and 🔎. |
-| `postProcessing` | Polling | `src/watch.js:177` | Post a swap's ⏳ "being processed" reply. |
-| `withdrawProcessing` | Polling | `src/watch.js:186` | Remove a swap's ⏳ when it cannot be turned into the 🔎 (syncSupport): one is already up, or following is switched off and nothing would ever update it. |
-| `syncSupport` | Polling | `src/watch.js:197` | Bring a swap's status reply in line with its status: the ⏳ is edited into the 🔎 while the support team has to step in (silent, like every edit), reworded if… |
-| `stopWatch` | Polling | `src/watch.js:230` | End one watch (logged). |
-| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:240` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
-| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:249` | Bring a swap's ⏳, 🔎 and closing message in line with the ticket as it is now: its "Swap #n", the 🔎's reason, and whether "ticket will be closed soon" still… |
-| `watchSwap` `export` | Watch lifecycle | `src/watch.js:276` | Follow a just-posted swap: post its closing note if it is already finished; otherwise post its ⏳ (if it is moving normally) or 🔎 (if the support team has to… |
-| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:321` | Cancel every watch in a channel — called when a ticket channel is deleted. |
+| `fingerprint` | Polling | `src/watch.js:63` | Anything that should cause an embed edit: status (and whether it is stuck), each event's state, the network notice, and the chain and token names (a chain or… |
+| `watchDelay` | Polling | `src/watch.js:67` | Poll fast while a swap is likely to move, then back off (the SWAP_WATCH_* settings) — never stopping. |
+| `ageOf` | Polling | `src/watch.js:75` | How old a watched swap is: since it was requested (from Meson), or since the bot began watching it if that is unknown. |
+| `nextDue` | Polling | `src/watch.js:81` | When a just-checked swap is next due. |
+| `scheduleRound` | Polling | `src/watch.js:84` | Plan the next check round, unless one is planned or running, or nothing is watched. |
+| `pickForRound` | Polling | `src/watch.js:93` | The watched swaps to check in a round starting at `now`: every one that is due, and with SWAP_WATCH_BUNDLE the others as well, soonest due first, as far as t… |
+| `runRound` | Polling | `src/watch.js:116` | One check round: every watched swap that is due (with SWAP_WATCH_BUNDLE, every watched swap that fits — pickForRound) is re-checked together — one Meson requ… |
+| `applyCheck` | Polling | `src/watch.js:148` | Act on one fresh look at a watched swap: edit the embed if it changed, post the closing message and stop once it is finished. |
+| `postClosing` | Polling | `src/watch.js:185` | Post a swap's closing message and take down its ⏳ and 🔎. |
+| `postProcessing` | Polling | `src/watch.js:199` | Post a swap's ⏳ "being processed" reply. |
+| `withdrawProcessing` | Polling | `src/watch.js:208` | Remove a swap's ⏳ when it cannot be turned into the 🔎 (syncSupport): one is already up, or following is switched off and nothing would ever update it. |
+| `syncSupport` | Polling | `src/watch.js:219` | Bring a swap's status reply in line with its status: the ⏳ is edited into the 🔎 while the support team has to step in (silent, like every edit), reworded if… |
+| `stopWatch` | Polling | `src/watch.js:252` | End one watch (logged). |
+| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:262` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
+| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:271` | Bring a swap's ⏳, 🔎 and closing message in line with the ticket as it is now: its "Swap #n", the 🔎's reason, and whether "ticket will be closed soon" still… |
+| `watchSwap` `export` | Watch lifecycle | `src/watch.js:298` | Follow a just-posted swap: post its closing note if it is already finished; otherwise post its ⏳ (if it is moving normally) or 🔎 (if the support team has to… |
+| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:343` | Cancel every watch in a channel — called when a ticket channel is deleted. |
 
 ### scripts/build-index.mjs
 
@@ -365,6 +370,12 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | `supports` | Status reason and support reply | `test/bot.test.mjs:187` | The 🔎 replies among what the bot posted. |
 | `restartable` | Values whose shape does not say what they are | `test/bot.test.mjs:464` | Make a world's history read as it does from Discord (embed fields readable, messages older than this process), so a test can restart the bot on it: forget th… |
 
+### test/bundle.test.mjs
+
+| Function | Section | Line | Purpose |
+| --- | --- | --- | --- |
+| `follow` | Helpers | `test/bundle.test.mjs:26` | Start following one swap in `world`'s ticket. |
+
 ### test/helpers.mjs
 
 | Function | Section | Line | Purpose |
@@ -373,11 +384,17 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | `swapId` `export` | Fake Meson | `test/helpers.mjs:52` | A swap ID made from one repeated character. |
 | `encodedSwap` `export` | Fake Meson | `test/helpers.mjs:55` | An encoded swap from BNB token 34 (or `outChain`) to Solana token 2, with a deadline an hour away (or `deadlineIn` seconds). |
 | `json` `export` | Fake Meson | `test/helpers.mjs:64` | A JSON response. |
-| `stubMeson` `export` | Fake Meson | `test/helpers.mjs:77` | Replace fetch with a fake Meson. |
-| `sleep` `export` | Fake Discord | `test/helpers.mjs:98` | Wait this many milliseconds. |
-| `makeWorld` `export` | Fake Discord | `test/helpers.mjs:101` | A fake server with one ticket channel. |
-| `refusal` `export` | Fake Discord | `test/helpers.mjs:137` | A Discord refusal (Missing Permissions). |
-| `texts` `export` | Fake Discord | `test/helpers.mjs:140` | The plain-text messages among what the bot posted. |
+| `stubMeson` `export` | Fake Meson | `test/helpers.mjs:78` | Replace fetch with a fake Meson. |
+| `sleep` `export` | Fake Discord | `test/helpers.mjs:100` | Wait this many milliseconds. |
+| `makeWorld` `export` | Fake Discord | `test/helpers.mjs:103` | A fake server with one ticket channel. |
+| `refusal` `export` | Fake Discord | `test/helpers.mjs:139` | A Discord refusal (Missing Permissions). |
+| `texts` `export` | Fake Discord | `test/helpers.mjs:142` | The plain-text messages among what the bot posted. |
+
+### test/no-bundle.test.mjs
+
+| Function | Section | Line | Purpose |
+| --- | --- | --- | --- |
+| `follow` | — | `test/no-bundle.test.mjs:20` | Start following one swap in `world`'s ticket. |
 
 ### test/presets.test.mjs
 
@@ -397,8 +414,8 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Constant | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `env` | Settings | `src/config.js:22` | The process environment, after dotenv has loaded `.env` into it. |
-| `config` `export` | Settings | `src/config.js:54` | All settings, read from .env only (no defaults in code). |
+| `env` | Settings | `src/config.js:23` | The process environment, after dotenv has loaded `.env` into it. |
+| `config` `export` | Settings | `src/config.js:62` | All settings, read from .env only (no defaults in code). |
 
 ### src/decode.js
 
@@ -506,5 +523,5 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 
 | Constant | Section | Line | Purpose |
 | --- | --- | --- | --- |
-| `watchers` | Polling | `src/watch.js:52` | Every watched swap, keyed `${channelId}:${swapId}`: what a check round needs to re-check it, and when it is next due. |
-| `REFUSED_PAUSE_MS` | Polling | `src/watch.js:59` | How long a swap waits after Discord refused a post (Missing Permissions…) before trying again: it stays followed in case access returns, without repeating th… |
+| `watchers` | Polling | `src/watch.js:53` | Every watched swap, keyed `${channelId}:${swapId}`: what a check round needs to re-check it, and when it is next due. |
+| `REFUSED_PAUSE_MS` | Polling | `src/watch.js:60` | How long a swap waits after Discord refused a post (Missing Permissions…) before trying again: it stays followed in case access returns, without repeating th… |

@@ -9,12 +9,12 @@
 // L52     swapId()
 // L55     encodedSwap()
 // L64     json()
-// L77     stubMeson()
-// L93   Fake Discord
-// L98     sleep()
-// L101    makeWorld()
-// L137    refusal()
-// L140    texts()
+// L78     stubMeson()
+// L95   Fake Discord
+// L100    sleep()
+// L103    makeWorld()
+// L139    refusal()
+// L142    texts()
 // ----- end of contents -----
 
 import { readFileSync } from 'node:fs'
@@ -71,10 +71,11 @@ export const json = (body, status = 200) => new Response(JSON.stringify(body), {
  * @param {string[]} [world.bad] swap IDs whose record is malformed
  * @param {string[]} [world.overdue] swap IDs whose deadline passed long ago
  * @param {string[]} [world.distant] swap IDs whose deadline is a day away
+ * @param {string[]} [world.old] swap IDs requested three days ago (checked only every SWAP_WATCH_LONG_INTERVAL_MINUTES)
  * @param {object[]} [world.walletSwaps] raw swap records every wallet has (default: none, a wallet that has never used Meson)
  * @returns {{requests: number}} a live count of swap requests
  */
-export function stubMeson ({ events = {}, search = {}, bad = [], overdue = [], distant = [], walletSwaps = [] } = {}) {
+export function stubMeson ({ events = {}, search = {}, bad = [], overdue = [], distant = [], old = [], walletSwaps = [] } = {}) {
   const count = { requests: 0 }
   globalThis.fetch = async (url) => {
     const u = String(url)
@@ -85,6 +86,7 @@ export function stubMeson ({ events = {}, search = {}, bad = [], overdue = [], d
     count.requests++
     const ids = u.match(/\/api\/v1\/swap\/(.+)$/)[1].split(/,|%2C/)
     const records = ids.map((id) => swapRecord(id, events[id] ?? MOVING, bad.includes(id) ? 'garbage' : overdue.includes(id) ? encodedSwap({ deadlineIn: -86400 }) : distant.includes(id) ? encodedSwap({ deadlineIn: 86400 }) : undefined))
+    for (const r of records) if (old.includes(r._id)) r.created = new Date(Date.now() - 3 * 86400 * 1000).toISOString()
     return json({ result: ids.length > 1 ? records : records[0] })
   }
   return count
