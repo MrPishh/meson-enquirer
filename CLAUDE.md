@@ -58,7 +58,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | `src/commands.js` | Slash command definitions (`COMMANDS`) + handlers |
 | `src/explorer-check.js` | Daily check that the explorer's status function still matches our port (`checkExplorerStatus`, `PORTED_FINGERPRINT`); a change is logged as a warning |
 | `src/discord-util.js` | `canReply` (the "is this a ticket?" check), `isStaff`, `messageText`, `quietReply`, `CHANNEL_GONE` |
-| `src/meson.js` | Meson API calls (incl. batched `getSwaps`, `jitter`), keeping chain and token names current (`refreshPresets`, `ensureNamesKnown`), chain health for the ⚠️ network notice, status derivation, swap → display object, wallet listing |
+| `src/meson.js` | Meson API calls (incl. batched `getSwaps`, `jitter`; the relayer stand-in `lookupOnRelayer` while the explorer is down), keeping chain and token names current (`refreshPresets`, `ensureNamesKnown`), chain health for the ⚠️ network notice, status derivation, swap → display object, wallet listing |
 | `src/extract.js` | Finds swap IDs / hashes / links / wallet addresses in free text, in priority order |
 | `src/render.js` | Every embed and message text the bot posts, and the readers that recognise them again after a restart |
 | `src/decode.js` | 32-byte encoded-swap decoder + amount formatting |
@@ -73,6 +73,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | `test/no-follow.test.mjs` | `npm test`: behaviour with following switched off |
 | `test/bundle.test.mjs` | `npm test`: followed swaps checked together (`SWAP_WATCH_BUNDLE=true`), never with an extra request |
 | `test/no-bundle.test.mjs` | `npm test`: with `SWAP_WATCH_BUNDLE=false` each swap waits for its own interval |
+| `test/relayer.test.mjs` | `npm test`: explorer down → limited embed from the relayer, follow-ups and full details once it is back (also after a restart) |
 | `test/helpers.mjs` | The tests' fake settings, fake Meson and fake Discord |
 | `scripts/check-explorer.mjs` | `npm run check-explorer` — the explorer status check from the terminal (`--show` prints the explorer's function for re-porting) |
 | `scripts/build-index.mjs` | `npm run index` — rebuilds every file's Contents block, long docs' heading Contents blocks + `CODE_INDEX.md`, then runs the doc checks |
@@ -207,6 +208,7 @@ npm run index:watch         # rebuild on every save while editing by hand
   - **Quick retries:** `getJson` retries network errors, 429, 5xx *and* non-JSON bodies (`MESON_RETRIES`, waiting about 1s, 2s, 4s). Only "not found" is final — don't make non-JSON "fatal" again.
   - **Never give up on a ticket:** `queueMessage` (and restart recovery) retries a whole ticket message until it works — `TICKET_RETRY_SECONDS`, doubling up to `TICKET_RETRY_MAX_SECONDS` (`retryDelay`) — and stops only when the ticket is gone or Discord refused the bot (4xx, e.g. Missing Permissions; `worthRetrying`). Don't add a give-up limit. A failed re-check never ends a watch either.
   - **Batches:** swaps are always re-checked in batches (`getSwaps`, also in recovery), never one request per swap. The batch form is undocumented, so anything it fails to deliver is looked up on its own; if those single lookups find swaps, the batch is skipped for an hour (`BATCH_PAUSE_MS`, logged) and then tried again. A real outage fails both, so it never pauses the batch.
+  - **Relayer stand-in:** when the explorer fails (not "not found"), `lookupSwap` asks Meson's relayer (`lookupOnRelayer`) and posts the embed with `swap.limited` — title "Status unavailable (limited details)", grey, no status reason, no wallets or request time, the transactions "found so far (may still be confirming)". The relayer has no "confirming" flag or failed attempts, so its status is never shown — a confirming release would read as Done. Such a swap gets no ⏳ / 🔎 / closing message (`watchSwap`, `processingOwed`) until a check round reads the explorer again and replaces the embed with exactly the normal one; recovery recognises it by its title (`readSwapEmbed`). A value the relayer does not know is still retried, never "couldn't find" — but it does not hold back the message's other values: those are looked up first, and the message is retried after (`showSwap` returns `unavailable`, `handleTicketMessage`). There is no stand-in for the wallet list.
   - **Random spacing:** every repeated wait goes through `jitter` (`src/meson.js`, `JITTER_PERCENT`) — use it for any new timer that calls Meson.
 - **An unknown or malformed wallet address is not an error** — the address endpoint returns an empty list (HTTP 200).
 - **`src/presets.json` is generated.** Fix the extractor (`fetchLiveChains`), not the JSON. It must keep "later definitions win" (see `CONTEXT.md`) or tokens get mislabelled on re-indexed chains.
@@ -237,7 +239,7 @@ npm run index:watch         # rebuild on every save while editing by hand
 
 These were decided for the circumstances at the time, and may change — they are not permanent rules. When a task runs into one (the user asks for something it rules out, or its reason no longer seems to hold), say so and let the user decide: never silently follow it against their request, and never silently override it. The same goes for the "don't re-add it unasked" notes elsewhere in this file.
 
-- Uses `explorer.meson.fi/api/v1/*`, not the documented `relayer.meson.fi` API, whose swap endpoints carry event hashes, chains, tokens and amounts but no wallet addresses, failed attempts or pending flags — not enough for the details embed or the explorer's status. Other public Meson endpoints (limits, pool liquidity, chain RPC health) are listed in `CONTEXT.md` § Other public endpoints.
+- Uses `explorer.meson.fi/api/v1/*`, not the documented `relayer.meson.fi` API, whose swap endpoints carry event hashes, chains, tokens and amounts but no wallet addresses, failed attempts or pending flags — not enough for the details embed or the explorer's status. The relayer is used only as the stand-in while the explorer is down (limited details, see "Meson's host has hiccups"). Other public Meson endpoints (limits, pool liquidity, chain RPC health) are listed in `CONTEXT.md` § Other public endpoints.
 - No API key anywhere; every endpoint used is public.
 - The server supports two projects, Meson and FreeTech, and only Meson's swaps can be looked up. FreeTech's form requires a wallet, and people do not always pick the right ticket category, so categories cannot keep the bot out of those tickets. So a wallet that has never used Meson gets no reply (`postWalletSwaps`), and the wallet embeds always name Meson (`buildUnfinishedAddressEmbeds`).
 - Addresses and hashes are shown **in full**, not truncated — staff copy them.

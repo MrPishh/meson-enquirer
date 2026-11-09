@@ -4,22 +4,22 @@
 L28   The problem
 L32   Glossary
 L52   What the documented API does and does not give you
-L71   What the explorer API gives you
-L119  Other public endpoints found in the explorer's code (2026-10-28)
-L140  The encoded swap
-L171  Chain and token names
-L187  Status derivation
-L194    How it works
-L204    The `*` and how the bot writes a status
-L209    What each event means
-L226    Seen on real swaps
-L234    Which statuses count as finished
-L238    Expired
-L247    REQUESTING
-L253    Failed
-L261    Event order and the transaction hashes list
-L267  Per-chain explorer links
-L275  Things that will break this
+L72   What the explorer API gives you
+L120  Other public endpoints found in the explorer's code (2026-10-28)
+L141  The encoded swap
+L172  Chain and token names
+L188  Status derivation
+L195    How it works
+L205    The `*` and how the bot writes a status
+L210    What each event means
+L227    Seen on real swaps
+L235    Which statuses count as finished
+L239    Expired
+L248    REQUESTING
+L254    Failed
+L262    Event order and the transaction hashes list
+L268  Per-chain explorer links
+L276  Things that will break this
 end of contents -->
 
 Everything here was established empirically against live Meson endpoints on 2026-10-27/28 and verified field-by-field against the rendered explorer page.
@@ -62,9 +62,10 @@ The official docs at <https://meson.dev> describe a relayer API:
 When this was first written (2026-10-27) the two `swap` endpoints looked **status-only**: a map like `{BONDED, LOCKED, EXECUTED, RELEASED}` of transaction hashes plus an `expired` flag.
 Re-checked 2026-10-28: they now also carry `swap: {id, encoded, from: {amount, network, token}, to: {amount, network, token}}` — chains, tokens and amounts as display strings (`"179.276362"`, network ids like `xlayer`, `bnb`).
 Still missing: **wallet addresses** (initiator / recipient), failed attempts, pending flags and the request time — so it still cannot fill the details embed or derive the explorer's status.
-Both resolve a swap ID, an encoded swap and a source tx hash; unknown → HTTP 404 `{"error":{"code":-1,"message":"swap-not-found"}}`.
+Re-checked 2026-11-10: `/swap/<x>` takes a swap ID or an encoded swap (not a tx hash), `?hash=` a source *or destination* tx hash (not a swap ID); unknown → HTTP 404 `{"error":{"code":-1,"message":"swap-not-found"}}`.
 No batching: `/swap/<id>,<id>` answers "swap-not-found".
-It is a separate host from the explorer, so it is the one usable stand-in if `explorer.meson.fi` itself is down (degraded: no addresses, no exact status).
+It is a separate host from the explorer, so it is the one usable stand-in if `explorer.meson.fi` itself is down (degraded: no addresses, no exact status) — and the bot uses it that way: when the explorer fails (not "not found") `lookupSwap` asks the relayer (`lookupOnRelayer`, `limitedView` in `src/meson.js`) and posts a details embed titled "Status unavailable (limited details)" — no status at all, because without pending flags and failed attempts `explorerStatus` over the relayer's steps would read a still-confirming release as Done; the fee is only known as a total; its follow-ups wait until a check round gets the full record from the explorer (`watchSwap`), which also replaces the embed.
+On 2026-11-10 the explorer's website and `/api/v1/address/<a>/swap` answered HTTP 500 for every address while `/api/v1/search` and `/api/v1/swap/<id>` kept working — so a wallet-only ticket went unanswered while a hash worked; the relayer has no wallet listing to stand in for that.
 
 `/api/v1/list` returns 43 chains with real token symbols (it correctly reports that `usdt` on BNB displays as `BSC-USD`), but it carries **no `tokenIndex` and no `slip44`**, which are exactly the two numbers an encoded swap contains — so it cannot decode a swap, and the bot does not use it.
 
@@ -277,7 +278,7 @@ Source-side events (posted, bonded, executed, cancelled) are on the **in** chain
 - The explorer API is not a documented, versioned contract.
   If `/api/v1/search` or `/api/v1/swap/<id>` changes shape, the bot breaks.
   The batch form `/api/v1/swap/<id>,<id>` is covered: if it stops working, `getSwaps` falls back to single lookups and logs it.
-  The documented relayer endpoints could stand in for status, chains, tokens and amounts, but not for wallet addresses or the explorer's exact status.
+  The documented relayer endpoints stand in (limited details) while the explorer is down, but not for wallet addresses, the wallet list or the explorer's exact status.
 - If the explorer changes its status function, our port silently disagrees with it — `src/explorer-check.js` detects that daily and logs a warning; re-port then.
 - If the explorer bundle's preset layout changes, reading the table fails rather than using a truncated one (it requires ≥40 chains, and every chunk read): the bot logs `!! could not read Meson's chain and token table` and keeps its current table, so existing names stay right but new chains and tokens show up as `Unknown chain (0x…)` / `token#NN` until the extractor is fixed.
 - The API never reports *when* a swap failed or was cancelled — only `released` (a real completion time) and `expireTs` (when it stops being executable).

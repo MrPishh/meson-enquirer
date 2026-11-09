@@ -1,4 +1,4 @@
-Last description review: 2026-11-08 (changed-scope: SWAP_WATCH_BUNDLE — followed swaps checked together in the spare places of each request; checked watch.js header and runRound/pickForRound comments, config.js, .env.example, README § Settings, CLAUDE.md file map / task table / ticket flow, CONTEXT.md check round and batch sections).
+Last description review: 2026-11-10 (changed-scope: relayer stand-in, and a value Meson cannot answer for no longer holds back the others in a message — limited details embed while the explorer is down, follow-ups held until it is back; checked meson.js header, lookupSwap / lookupOnRelayer / limitedView, getJson, render.js buildSwapEmbed / sideValue / readSwapEmbed, watch.js fingerprint / watchSwap, recover.js, tickets.js postSwap, scripts/lookup.mjs, CLAUDE.md file map / hiccups / deliberate choices, CONTEXT.md relayer section and "Things that will break this", README behaviour list).
 It covers the project up to and including the commit that last changed this file:
   git log -1 --format=%h -- .claude/last-description-review
 The next review only needs to look at what changed after that commit:

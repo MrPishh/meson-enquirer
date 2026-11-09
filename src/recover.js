@@ -168,6 +168,8 @@ async function recoverTicket (t, channel) {
     processing: followUps.get(f.message.id)?.processing ?? null,
     support: followUps.get(f.message.id)?.support ?? null,
     outcome: followUps.get(f.message.id)?.outcome,
+    // Shown with limited details (explorer down) and never given its ⏳: watchSwap posts it now if the swap is moving normally.
+    processingOwed: f.limited && !followUps.get(f.message.id),
   }))
   for (const e of t.swaps) rememberSwap(t, e.latest)
   // Other bots' messages already behind the bot's last reply count as read (Ticket Tool's form).

@@ -6,9 +6,9 @@ L52   Settings
 L117  Checking it works without Discord
 L131  What the user can paste
 L142  Behaviour in a ticket
-L162  Maintenance
-L174  For developers
-L183  License
+L163  Maintenance
+L175  For developers
+L184  License
 end of contents -->
 
 Meson Enquirer is a Discord bot for a Meson support server.
@@ -154,6 +154,7 @@ Some chains' values look alike (a Sui hash looks like a Solana wallet, a Sui wal
 - **Wallet only.** If no swap is found and the ticket shows none yet, the bot lists the wallet's unfinished swaps (limits: the `ADDRESS_*` settings). If there are none it says so, and that it only checked Meson swaps. A wallet that has never used Meson gets no reply at all: the server also supports other projects whose forms ask for a wallet, and people do not always pick the right ticket category. A wallet pasted after a swap is shown is ignored.
 - **No repeats.** A swap, wallet or unknown value pasted again gets no second reply in that ticket, also after a restart.
 - **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so, once per value (it still looks the value up each time, in case the swap has appeared since). The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
+- **Meson's explorer down: limited details.** If the explorer can't be reached but Meson's relayer knows the swap, the ticket gets the details embed titled "Status unavailable (limited details)" — chains, amounts and the transactions found so far, but no status (the relayer cannot confirm one, so nothing ever says Done early), wallets or request time. The ⏳ / 🔎 / closing message wait until the explorer is back; then the embed is replaced with the normal one and the usual replies follow. A wallet address has no stand-in.
 - **Meson down never loses a ticket.** If Meson can't be reached or rejects requests, the bot keeps retrying (the `TICKET_RETRY_*` settings) until the ticket is answered, and keeps following posted swaps through the outage. It stops only when the ticket is closed or Discord refuses the bot's post (e.g. missing permissions); a swap is followed until it finishes or its ticket is closed.
 - **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, changing ⏳ to 🔎, posting ✅ / ↩️ — including for swaps that became stuck or finished while it was down) and answers messages users sent while it was offline. It does the same after a long connection drop.
 - **A failed post is tried again.** If Discord fails while the bot posts a ⏳, 🔎 or closing message, the next check tries again. If Discord refuses (e.g. missing permissions), it waits an hour between tries, and carries on once access returns.
@@ -174,7 +175,7 @@ If `Unknown chain (0x…)` or `token#34` stays on a swap, look for `!! could not
 ## For developers
 
 - `CLAUDE.md` — orientation: file map, "where to look for…", ticket flow, status table, rules to know before editing.
-- `CONTEXT.md` — the Meson side: endpoints, the 32-byte encoded-swap layout, status meanings, and why the documented relayer API is not enough.
+- `CONTEXT.md` — the Meson side: endpoints, the 32-byte encoded-swap layout, status meanings, and why the documented relayer API is only a stand-in.
 - `CODE_INDEX.md`, each code file's "Contents" block and the section list at the top of long docs are generated line-accurate indexes, rebuilt before every `npm start` and after Claude Code edits a file. When editing by hand, keep `npm run index:watch` running.
 - `npm run index -- --check` also checks the hand-written docs against the code (file map, settings, commands, npm scripts, links…) and fails on drift; Claude Code runs it automatically when it finishes a change.
 - `npm test` runs the tests in `test/` against a fake Discord and a fake Meson, so it needs no `.env` or network. A fix or new behaviour gets a test that fails without it.

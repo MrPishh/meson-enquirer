@@ -14,10 +14,10 @@
 // L82     queueMessage()
 // L96   Message handling
 // L103    handleTicketMessage()
-// L157  Posting
-// L165    showSwap()
-// L186    postSwap()
-// L206    postWalletSwaps()
+// L165  Posting
+// L173    showSwap()
+// L194    postSwap()
+// L214    postWalletSwaps()
 // ----- end of contents -----
 
 import { config } from './config.js'
@@ -114,14 +114,19 @@ async function handleTicketMessage (t, message, fromUser) {
   // Candidates Meson says are wallets (a Sui or Starknet wallet has a swap ID's shape): not a failed lookup, so never "couldn't find".
   const wallets = new Map()
 
+  // A value Meson cannot answer for right now (explorer down, relayer does not know it) does not stop the others: one the relayer knows is still shown with limited details.
+  let unavailable = null
   for (const query of fresh) {
     if (t.known.has(query.toLowerCase())) { foundAny = true; resolved.add(query); continue } // resolved via an earlier candidate
     const found = await showSwap(t, message, query, fromUser)
+    if (found.unavailable) { unavailable ??= found.unavailable; continue }
     if (found.address) wallets.set(query, found.address)
     if (!found.swap) continue
     foundAny = true
     resolved.add(query)
   }
+  // Then the whole message is retried (queueMessage) before any wallet or "couldn't find" step, which must not run on a half answer; swaps shown meanwhile are known to the ticket and skipped.
+  if (unavailable) throw unavailable
   const notFound = fresh.filter((q) => !resolved.has(q) && !wallets.has(q))
   // Looked up again each time, as a new swap can take a moment to appear, but the user is told only once per value: the same hash pasted again must not get the same reply again.
   const untold = notFound.filter((q) => !t.told.has(q.toLowerCase()))
@@ -133,8 +138,11 @@ async function handleTicketMessage (t, message, fromUser) {
     if (t.known.has(walletShaped.toLowerCase())) {
       foundAny = true // a hash of a swap already shown
       address = null
-    } else if (!t.addresses.has(walletShaped.toLowerCase()) && (await showSwap(t, message, walletShaped, fromUser)).swap) {
-      return
+    } else if (!t.addresses.has(walletShaped.toLowerCase())) {
+      const found = await showSwap(t, message, walletShaped, fromUser)
+      // Unknown while Meson is down: retry the message rather than treat a possible hash as a wallet.
+      if (found.unavailable) throw found.unavailable
+      if (found.swap) return
     }
   }
 
@@ -160,7 +168,7 @@ async function handleTicketMessage (t, message, fromUser) {
 
 /**
  * Look one value up and post the swap if it is new to this ticket.
- * @returns {Promise<{swap?: object, address?: string|null}>} `swap` if it resolved; otherwise `address` if Meson says the value is a wallet
+ * @returns {Promise<{swap?: object, address?: string|null, unavailable?: Error}>} `swap` if it resolved; otherwise `address` if Meson says the value is a wallet, or `unavailable` (the error) if Meson could not answer at all — the caller decides when to retry. A Discord error while posting is thrown.
  */
 async function showSwap (t, message, query, fromUser) {
   let swap
@@ -168,7 +176,7 @@ async function showSwap (t, message, query, fromUser) {
     swap = await lookupSwap(query)
   } catch (err) {
     if (err instanceof SwapNotFound) return { address: err.address }
-    throw err
+    return { unavailable: err }
   }
   const isNew = !t.swaps.some((e) => e.swapId === swap.swapId)
   if (isNew) await postSwap(t, message, swap, fromUser) // remembered only once actually shown
@@ -185,7 +193,7 @@ async function showSwap (t, message, query, fromUser) {
  */
 async function postSwap (t, message, swap, fromUser) {
   const n = t.swaps.length + 1
-  const embeds = [buildSwapEmbed(swap, { serial: n > 1 ? n : null, sourceNote: 'auto-detected from this ticket' })]
+  const embeds = [buildSwapEmbed(swap, { serial: n > 1 ? n : null, sourceNote: 'auto-detected from this ticket', updatesHere: config.watchIntervalMs > 0 })]
   const posted = fromUser ? await quietReply(message, { embeds }) : await message.channel.send({ embeds })
   // Registered only once posted, so a failed send leaves no half-made entry.
   const entry = { n, swapId: swap.swapId, message: posted, latest: swap }
