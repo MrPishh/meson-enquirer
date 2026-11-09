@@ -279,6 +279,7 @@ Source-side events (posted, bonded, executed, cancelled) are on the **in** chain
   If `/api/v1/search` or `/api/v1/swap/<id>` changes shape, the bot breaks.
   The batch form `/api/v1/swap/<id>,<id>` is covered: if it stops working, `getSwaps` falls back to single lookups and logs it.
   The documented relayer endpoints stand in (limited details) while the explorer is down, but not for wallet addresses, the wallet list or the explorer's exact status.
+  If the relayer changes its answer shape (`swap.id`, `swap.encoded`, upper-case step keys holding hashes), the stand-in finds nothing (or no steps) and the bot falls back to retrying as before — it never posts a status from it, so nothing wrong is claimed.
 - If the explorer changes its status function, our port silently disagrees with it — `src/explorer-check.js` detects that daily and logs a warning; re-port then.
 - If the explorer bundle's preset layout changes, reading the table fails rather than using a truncated one (it requires ≥40 chains, and every chunk read): the bot logs `!! could not read Meson's chain and token table` and keeps its current table, so existing names stay right but new chains and tokens show up as `Unknown chain (0x…)` / `token#NN` until the extractor is fixed.
 - The API never reports *when* a swap failed or was cancelled — only `released` (a real completion time) and `expireTs` (when it stops being executable).

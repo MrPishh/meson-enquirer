@@ -1,7 +1,7 @@
 /**
  * Restart recovery: rebuilds every open ticket from the bot's own messages in it, so a restart drops no follow-up.
  *
- * Ticket state is in memory only (ticket-state.js, watch.js), but Discord already holds what it described: each swap's details embed (its swap ID, in posting order = its "#n") and the ⏳ / 🔎 / ✅ / ↩️ replies to it.
+ * Ticket state is in memory only (ticket-state.js, watch.js), but Discord already holds what it described: each swap's details embed (its swap ID, in posting order = its "#n", and whether it shows limited details) and the ⏳ / 🔎 / ✅ / ↩️ replies to it, wallet embeds, ❓ replies and outage notices.
  * On startup each ticket channel's history is read, the ticket rebuilt, and every unfinished swap re-checked and followed again (watchSwap `resumed`: no second ⏳; a swap that finished while the bot was down gets its closing message now, and one that became stuck its 🔎).
  * Messages posted after the bot's last message — missed while it was down — are then handled as if they had just arrived (admitMessage).
  * Live messages for a ticket wait in its queue until its recovery is done, so none is handled against an empty ticket.

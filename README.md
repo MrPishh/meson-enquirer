@@ -185,4 +185,4 @@ If `Unknown chain (0x…)` or `token#34` stays on a swap, look for `!! could not
 ## License
 
 [MIT](LICENSE) — anyone may use, copy, modify and share it, as long as the license notice is kept.
-Not affiliated with Meson; it only reads Meson's public explorer.
+Not affiliated with Meson; it only reads Meson's public endpoints (explorer, relayer, chain health).

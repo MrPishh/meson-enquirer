@@ -10,9 +10,9 @@ Anyone can look up a swap with `/meson-query` inside the support ticket categori
 2. **Tickets** (`tickets.js`): find swap-shaped values in the text (`extract.js`), look them up (`meson.js`), post the details embed (`render.js`).
 3. **Following** (`watch.js`): one shared check round re-checks every open swap, in batches; it edits the embed and posts ⏳ / 🔎 / ✅ / ↩️.
 4. **Memory** (`ticket-state.js`) lives in memory only; after a restart, **recovery** (`recover.js`) rebuilds it from the bot's own Discord messages.
-5. **Meson side** (`meson.js`): the explorer API (search, swap, batch, address) and `rpcs.meson.fi` for the network notice; `decode.js` unpacks the encoded swap, `presets.js` names chains and tokens, `explorer-check.js` watches the explorer's status logic.
+5. **Meson side** (`meson.js`): the explorer API (search, swap, batch, address), `relayer.meson.fi` as a stand-in while the explorer is down (limited details) and `rpcs.meson.fi` for the network notice; `decode.js` unpacks the encoded swap, `presets.js` names chains and tokens, `explorer-check.js` watches the explorer's status logic.
 
-External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` — all public, no API key. Meson's terms (swap, LP, released, encoded swap…) are explained in [CONTEXT.md § Glossary](CONTEXT.md#glossary).
+External systems: Discord, Ticket Tool, `explorer.meson.fi`, `relayer.meson.fi`, `rpcs.meson.fi` — all public, no API key. Meson's terms (swap, LP, released, encoded swap…) are explained in [CONTEXT.md § Glossary](CONTEXT.md#glossary).
 
 ## How to navigate — read this first
 
@@ -51,7 +51,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | --- | --- |
 | `src/index.js` | Entry point only: Discord client, event wiring, startup log + `recoverTickets` + `startExplorerCheck`, crash guards (client `error`, `unhandledRejection`) |
 | `src/config.js` | Every `.env` setting, parsed once → `config` |
-| `src/tickets.js` | Ticket auto-reply: `onTicketMessage` → `admitMessage` → `handleTicketMessage` → `postSwap` / `postWalletSwaps`; retrying a message while Meson is down (`queueMessage`, `retryDelay`, `worthRetrying`) |
+| `src/tickets.js` | Ticket auto-reply: `onTicketMessage` → `admitMessage` → `handleTicketMessage` → `postSwap` / `postWalletSwaps`; retrying a message while Meson is down (`queueMessage`, `retryDelay`, `worthRetrying`) and telling the ticket once (`noteOutage`) |
 | `src/watch.js` | Follow-up after a swap is posted: ⏳ / 🔎 (`syncSupport`) / closing message, the shared batched check round (`runRound`), embed edits; `syncFollowUps` keeps earlier ⏳ / 🔎 / closing messages labelled |
 | `src/ticket-state.js` | Per-ticket memory: swaps shown, known IDs/hashes, serial numbers, "closing soon" rule |
 | `src/recover.js` | Restart recovery: on startup rebuilds every ticket from the bot's own messages, resumes its watches, handles messages missed while down |
@@ -96,7 +96,7 @@ External systems: Discord, Ticket Tool, `explorer.meson.fi`, `rpcs.meson.fi` —
 | Change the wallet fallback (which swaps, how far back) | `postWalletSwaps` (`src/tickets.js`), `listUnfinishedSwapsForAddress` (`src/meson.js`), `buildUnfinishedAddressEmbeds` (`src/render.js`) |
 | Change follow-ups, polling speed, when the ⏳ is removed | `watchSwap`, `watchDelay`, `ageOf`, `runRound` (the shared check round), `pickForRound` (which swaps it checks; `SWAP_WATCH_BUNDLE`), `applyCheck`, `postProcessing`, `syncSupport`, `withdrawProcessing` in `src/watch.js` |
 | Change when a Releasing swap counts as stuck | `deriveStatus` in `src/meson.js` (`RELEASING_STUCK_AFTER_MINUTES`) |
-| Change what happens while Meson is down (retries, back-off, random spacing) | `getJson` (quick retries), `jitter` in `src/meson.js`; `queueMessage`, `retryDelay`, `worthRetrying` in `src/tickets.js`; `claim` in `src/recover.js` (`MESON_*`, `TICKET_RETRY_*`, `JITTER_PERCENT`) |
+| Change what happens while Meson is down (retries, back-off, random spacing, the relayer stand-in, the outage notices) | `getJson` (quick retries), `jitter`, `lookupOnRelayer`, `limitedView` in `src/meson.js`; `queueMessage`, `retryDelay`, `worthRetrying`, `noteOutage` in `src/tickets.js`; `buildOutageNotice` in `src/render.js`; `claim` in `src/recover.js` (`MESON_*`, `TICKET_RETRY_*`, `JITTER_PERCENT`) |
 | Change the explorer status check (when, how it compares) | `checkExplorerStatus`, `startExplorerCheck`, `PORTED_FINGERPRINT` in `src/explorer-check.js` (`EXPLORER_CHECK_HOURS`) |
 | Change how a status is worked out | `explorerStatus` (port of the explorer's — re-port, don't tune) and `deriveStatus` in `src/meson.js` (+ `CONTEXT.md` § Status derivation) |
 | Change the ⚠️ network notice (when it shows, wording) | `troubledChainIds`, `addChainHealth` in `src/meson.js` (`CHAIN_HEALTH_CACHE_SECONDS`); `buildChainNotice` in `src/render.js` |
