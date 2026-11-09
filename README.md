@@ -6,9 +6,9 @@ L52   Settings
 L117  Checking it works without Discord
 L131  What the user can paste
 L142  Behaviour in a ticket
-L163  Maintenance
-L175  For developers
-L184  License
+L164  Maintenance
+L176  For developers
+L185  License
 end of contents -->
 
 Meson Enquirer is a Discord bot for a Meson support server.
@@ -155,6 +155,7 @@ Some chains' values look alike (a Sui hash looks like a Solana wallet, a Sui wal
 - **No repeats.** A swap, wallet or unknown value pasted again gets no second reply in that ticket, also after a restart.
 - **Not found.** If the user pastes something swap-shaped that Meson does not know, the bot says so, once per value (it still looks the value up each time, in case the swap has appeared since). The form never gets this reply — Ticket Tool embeds are full of Discord IDs and other hex-ish noise.
 - **Meson's explorer down: limited details.** If the explorer can't be reached but Meson's relayer knows the swap, the ticket gets the details embed titled "Status unavailable (limited details)" — chains, amounts and the transactions found so far, but no status (the relayer cannot confirm one, so nothing ever says Done early), wallets or request time. The ⏳ / 🔎 / closing message wait until the explorer is back; then the embed is replaced with the normal one and the usual replies follow. A wallet address has no stand-in.
+- **Meson down: one notice per ticket.** If a wallet's swaps can't be read, the ticket is told once to share a transaction hash, swap ID or explorer link instead (FreeTech tickets get this too while it lasts, as the bot can't tell them apart then); if a user's swap ID, hash or link can't be looked up at all, they are told once that the details will follow when Meson is back. Neither is repeated, also after a restart.
 - **Meson down never loses a ticket.** If Meson can't be reached or rejects requests, the bot keeps retrying (the `TICKET_RETRY_*` settings) until the ticket is answered, and keeps following posted swaps through the outage. It stops only when the ticket is closed or Discord refuses the bot's post (e.g. missing permissions); a swap is followed until it finishes or its ticket is closed.
 - **Restarts lose nothing.** On startup the bot reads every open ticket, rebuilds it from its own messages, carries on following each unfinished swap (updating the embed, changing ⏳ to 🔎, posting ✅ / ↩️ — including for swaps that became stuck or finished while it was down) and answers messages users sent while it was offline. It does the same after a long connection drop.
 - **A failed post is tried again.** If Discord fails while the bot posts a ⏳, 🔎 or closing message, the next check tries again. If Discord refuses (e.g. missing permissions), it waits an hour between tries, and carries on once access returns.

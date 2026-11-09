@@ -20,7 +20,7 @@
 
 import { config } from './config.js'
 import { getSwaps, SWAP_BATCH_SIZE } from './meson.js'
-import { readSwapEmbed, readWalletEmbed, readToldValues, followUpKind } from './render.js'
+import { readSwapEmbed, readWalletEmbed, readToldValues, followUpKind, outageNoticeKind } from './render.js'
 import { getTicket, forgetTicket, rememberSwap } from './ticket-state.js'
 import { watchSwap, syncFollowUps, stopWatchingChannel } from './watch.js'
 import { admitMessage, retryDelay, worthRetrying } from './tickets.js'
@@ -136,6 +136,9 @@ async function recoverTicket (t, channel) {
     const wallet = readWalletEmbed(m.embeds[0])
     if (wallet) addresses.add(wallet.toLowerCase())
     for (const value of readToldValues(m)) t.told.add(value.toLowerCase())
+    // An outage notice already posted is not posted again if Meson is still down after the restart.
+    const outage = outageNoticeKind(m.content)
+    if (outage) t.outageNotes.add(outage)
     const kind = followUpKind(m.content)
     const to = m.reference?.messageId
     if (to && kind) followUps.set(to, { ...followUps.get(to), [kind]: m })
