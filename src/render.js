@@ -271,7 +271,7 @@ export function buildSwapNotFoundMessage (queries) {
  * `wallet`: a wallet's swap list could not be read (the server's other project asks for wallets too, which is accepted). `swap`: a swap ID / hash / link could not be looked up, not even on Meson's relayer.
  */
 const OUTAGE_NOTICES = {
-  wallet: 'Meson\'s wallet address lookup is temporarily unavailable, so we can\'t check your wallet address right now. If this is about a Meson swap, please share the source transaction hash, a blockchain explorer link, the Meson swap ID or the Meson explorer link.',
+  wallet: 'Meson\'s wallet address lookup is temporarily unavailable, so we can\'t check your address right now. If this is about a Meson swap, please share the source transaction hash, a blockchain explorer link, the Meson swap ID or the Meson explorer link.',
   swap: 'Meson\'s explorer isn\'t responding right now. We\'ll keep trying and post your swap details here as soon as it\'s back.',
 }
 
