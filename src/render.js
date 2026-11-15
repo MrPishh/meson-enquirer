@@ -45,7 +45,7 @@
 // ----- end of contents -----
 
 import { EmbedBuilder } from 'discord.js'
-import { isFinished } from './meson.js'
+import { isFinished, forMeson } from './meson.js'
 
 // =============================================================================
 //   Shared helpers
@@ -333,7 +333,7 @@ export function buildUnfinishedAddressEmbeds (address, result, opts = {}) {
           ? `Unfinished Meson swaps for this wallet: ${swaps.length}`
           // Split over several messages — a running count, so the last reads "13 out of 13".
           : `Unfinished Meson swaps for this wallet: ${i * ROWS_PER_EMBED + rows.length} out of ${swaps.length}`)
-      .setURL(`https://explorer.meson.fi/address/${address}`)
+      .setURL(`https://explorer.meson.fi/address/${forMeson(address)}`)
     if (i === 0) {
       // The wallet is a fallback — say why it is being shown instead of a swap.
       const missed = opts.missed?.length

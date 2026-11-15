@@ -13,12 +13,12 @@
 // L187    supports()
 // L360  A bad record from Meson
 // L389  Values whose shape does not say what they are
-// L464    restartable()
+// L484    restartable()
 // ----- end of contents -----
 
 import test, { afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { useFakeSettings, stubMeson, makeWorld, swapId, swapRecord, refusal, sleep, texts, MOVING, DONE } from './helpers.mjs'
+import { useFakeSettings, stubMeson, makeWorld, swapId, swapRecord, refusal, sleep, texts, json, MOVING, DONE } from './helpers.mjs'
 
 useFakeSettings()
 const { watchSwap, stopWatchingChannel } = await import('../src/watch.js')
@@ -425,6 +425,26 @@ test('a wallet with a swap ID shape (Sui, Starknet) lists the wallet, without "c
   assert.equal(world.posted[0].embeds[0].data.title, 'No open Meson swaps for this wallet')
   assert.ok(world.posted[0].embeds[0].data.description.includes('This only checks swaps made through Meson'))
   assert.ok(!world.posted[0].embeds[0].data.description.includes('Could not find'))
+})
+
+test('a checksummed wallet and an upper-case swap ID are found, as Meson matches only lower case', async () => {
+  const wallet = '0x8d55724FCA8A1794F02aD41eA2555aF8A5A0DeAD'
+  const id = swapId('d')
+  stubMeson({ events: { [id]: MOVING }, search: { [id]: { swapId: id } }, walletSwaps: [swapRecord(swapId('e'), MOVING)] })
+  // Like the real explorer: any upper-case hex in the request finds nothing (empty wallet list, "not found" otherwise).
+  const stubbed = globalThis.fetch
+  globalThis.fetch = async (url) => /0x[0-9a-f]*[A-F]/.test(decodeURIComponent(String(url)))
+    ? (String(url).includes('/address/') ? json({ result: { list: [] } }) : json({ error: { message: 'Swap not found' } }, 404))
+    : stubbed(url)
+  const form = makeWorld('w6')
+  onTicketMessage(form.message(901, { id: 'TICKETTOOL', bot: true }, { embeds: [{ description: `Wallet: ${wallet}` }] }))
+  const user = makeWorld('w7')
+  onTicketMessage(user.message(902, user.user, { content: `swap ${id.toUpperCase().replace('0X', '0x')}` }))
+  await sleep(300)
+  assert.equal(form.posted[0]?.embeds?.[0]?.data?.title, 'Unfinished Meson swaps for this wallet: 1')
+  assert.equal(form.posted[0].embeds[0].data.url, `https://explorer.meson.fi/address/${wallet.toLowerCase()}`)
+  assert.ok(user.posted[0]?.embeds?.[0]?.data?.title?.startsWith('Meson swap'))
+  stopWatchingChannel('w7')
 })
 
 test('a wallet that has never used Meson gets no reply, from the form or from the user', async () => {

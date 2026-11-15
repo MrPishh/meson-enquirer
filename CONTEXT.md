@@ -5,21 +5,21 @@ L28   The problem
 L32   Glossary
 L52   What the documented API does and does not give you
 L72   What the explorer API gives you
-L120  Other public endpoints found in the explorer's code (2026-10-28)
-L141  The encoded swap
-L172  Chain and token names
-L188  Status derivation
-L195    How it works
-L205    The `*` and how the bot writes a status
-L210    What each event means
-L227    Seen on real swaps
-L235    Which statuses count as finished
-L239    Expired
-L248    REQUESTING
-L254    Failed
-L262    Event order and the transaction hashes list
-L268  Per-chain explorer links
-L276  Things that will break this
+L121  Other public endpoints found in the explorer's code (2026-10-28)
+L142  The encoded swap
+L173  Chain and token names
+L189  Status derivation
+L196    How it works
+L206    The `*` and how the bot writes a status
+L211    What each event means
+L228    Seen on real swaps
+L236    Which statuses count as finished
+L240    Expired
+L249    REQUESTING
+L255    Failed
+L263    Event order and the transaction hashes list
+L269  Per-chain explorer links
+L277  Things that will break this
 end of contents -->
 
 Everything here was established empirically against live Meson endpoints on 2026-10-27/28 and verified field-by-field against the rendered explorer page.
@@ -73,7 +73,8 @@ On 2026-11-10 the explorer's website and `/api/v1/address/<a>/swap` answered HTT
 
 The explorer is a Next.js app.
 The swap page is *not* server-rendered with data — the HTML contains only the swap ID — so the data comes from client-side calls on the explorer's own origin.
-All work unauthenticated, with no API key:
+All work unauthenticated, with no API key.
+Every one matches the value exactly, and Meson stores hex in lower case: a checksummed EVM wallet gets an empty list, an upper-case swap ID, encoded swap or hash "Swap not found" (checked 2026-11-15, also on the relayer; only search answers a mixed-case wallet with its lower-case address). The bot lowercases hex before every call (`forMeson`).
 
 ```
 GET https://explorer.meson.fi/api/v1/search?q=<anything>
