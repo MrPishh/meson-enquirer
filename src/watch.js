@@ -33,14 +33,14 @@
 // L268  Watch lifecycle
 // L273    detailsEmbed()
 // L282    syncFollowUps()
-// L305    syncWalletList()
-// L329    watchSwap()
-// L386    stopWatchingChannel()
+// L307    syncWalletList()
+// L331    watchSwap()
+// L397    stopWatchingChannel()
 // ----- end of contents -----
 
 import { config } from './config.js'
 import { getSwaps, isFinished, SWAP_BATCH_SIZE, jitter } from './meson.js'
-import { buildSwapEmbed, buildOutcomeMessage, buildProcessingMessage, buildSupportMessage, relistWalletEmbeds, CLOSING_SOON } from './render.js'
+import { buildSwapEmbed, buildOutcomeMessage, buildProcessingMessage, buildSupportMessage, relistWalletEmbeds, outcomeKind, readOutcomeKind, CLOSING_SOON } from './render.js'
 import { rememberSwap, serialOf, outcomeOpts } from './ticket-state.js'
 import { quietReply, CHANNEL_GONE, discordRefused } from './discord-util.js'
 
@@ -290,8 +290,10 @@ export async function syncFollowUps (t, entry) {
     entry.support = await entry.support.edit({ content: support }).catch(() => entry.support)
   }
   // "Closed soon" is only ever dropped here, never added: it belongs on the closing message of the swap that finished last.
+  // The outcome is the one the message was posted with, never re-derived: a swap whose outcome changed on Meson gets a fresh closing message instead (watchSwap), not a silent rewrite.
   const opts = outcomeOpts(t, entry)
-  const outcome = entry.outcome && buildOutcomeMessage(entry.latest, { ...opts, closingSoon: opts.closingSoon && entry.outcome.content.includes(CLOSING_SOON) })
+  const kind = entry.outcome && readOutcomeKind(entry.outcome.content)
+  const outcome = kind && buildOutcomeMessage(entry.latest, { ...opts, kind, closingSoon: opts.closingSoon && entry.outcome.content.includes(CLOSING_SOON) })
   if (entry.outcome && outcome && entry.outcome.content !== outcome) {
     entry.outcome = await entry.outcome.edit({ content: outcome }).catch(() => entry.outcome)
   }
@@ -333,14 +335,23 @@ export async function watchSwap (t, entry, { resumed = false } = {}) {
 
   if (resumed) {
     if (entry.outcome) {
-      // Closed before the restart — nothing left to follow. A ⏳ or 🔎 still up means the bot stopped between the two steps.
+      // Closed before the restart. A ⏳ or 🔎 still up means the bot stopped between the two steps.
       await entry.processing?.delete().catch(() => {})
       entry.processing = null
       await entry.support?.delete().catch(() => {})
       entry.support = null
-      return
     }
     await entry.message.edit({ embeds: [detailsEmbed(t, entry, 'auto-detected from this ticket · auto-updated')] }).catch(() => {})
+    if (entry.outcome) {
+      const posted = readOutcomeKind(entry.outcome.content)
+      // The same outcome as Meson shows now: nothing left to follow.
+      if (posted === outcomeKind(entry.latest.status)) return
+      // Meson changed a finished swap's outcome (seen 2026-11-24: Cancelled, then released → Done). The old closing message would now say the wrong thing, so it goes, and what the swap calls for now is posted below as a fresh reply — the user is notified of it, as of the first.
+      await entry.outcome.delete().catch(() => {})
+      entry.outcome = null
+      entry.processingOwed = true // still moving after all: its ⏳ is owed
+      console.log(`#${channel.name}: ${entry.swapId} was ${posted}, is now ${entry.latest.status.label} — closing message replaced`)
+    }
   }
 
   const following = config.watchIntervalMs > 0

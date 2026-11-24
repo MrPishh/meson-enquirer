@@ -9,14 +9,14 @@
 // L54   A failed post never ends a follow-up
 // L121  Restart recovery
 // L138    ticketWithTwoSwaps()
-// L197  Status reason and support reply
-// L208    supports()
-// L381  A bad record from Meson
-// L410  Values whose shape does not say what they are
-// L505    restartable()
-// L651  Swaps found through a wallet
-// L656    walletList()
-// L659    detailsMessages()
+// L222  Status reason and support reply
+// L233    supports()
+// L406  A bad record from Meson
+// L435  Values whose shape does not say what they are
+// L530    restartable()
+// L676  Swaps found through a wallet
+// L681    walletList()
+// L684    detailsMessages()
 // ----- end of contents -----
 
 import test, { afterEach } from 'node:test'
@@ -192,6 +192,31 @@ test('a ⏳ left behind by a stop between the two steps is removed on recovery',
   await sleep(100)
   assert.equal(processing.deleted, true)
   assert.equal(world.posted.length, 0)
+})
+
+test('a swap whose outcome changed while it was not followed gets its embed updated and a fresh closing message, the old one deleted', async () => {
+  const id = `0x${'c2'.repeat(32)}`
+  const events = { [id]: [{ name: 'CANCELLED', hash: '0xcc' }] }
+  stubMeson({ search: { [id]: { swapId: id } }, events })
+  const world = makeWorld('c22')
+  const restart = restartable(world)
+  const first = world.message(140, world.user, { content: id })
+  world.channel.history = [first]
+  onTicketMessage(first)
+  await sleep(300)
+  const cancelled = world.channel.history.find((m) => m.content.startsWith('**↩️'))
+  assert.ok(cancelled, 'posted as cancelled')
+
+  // As on 2026-11-24: Meson released it after all.
+  events[id] = DONE
+  await restart()
+  const embed = world.channel.history.find((m) => (m.embeds[0]?.data ?? m.embeds[0])?.title?.startsWith('Meson swap'))
+  assert.equal((embed.embeds[0].data ?? embed.embeds[0]).title, 'Meson swap — Done', 'the embed shows the new status')
+  assert.ok(cancelled.deleted, 'the old closing message is deleted')
+  assert.ok(!cancelled.content.startsWith('**✅'), 'and was never silently rewritten')
+  const fresh = world.channel.history.filter((m) => m.content.startsWith('**✅') && !m.deleted)
+  assert.equal(fresh.length, 1, 'a fresh ✅ reply')
+  assert.equal(fresh[0].reference.messageId, embed.id)
 })
 
 // =============================================================================
