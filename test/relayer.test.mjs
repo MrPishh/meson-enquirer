@@ -196,7 +196,7 @@ test('a value the relayer does not know does not hold back a later one it does k
 //   Outage notices
 // =============================================================================
 
-test('a wallet whose swap list Meson cannot read gets the wallet notice once — and its list once Meson is back', async () => {
+test('a wallet whose swap list Meson cannot read gets the wallet notice once — and its list and swaps once Meson is back', async () => {
   const wallet = '0x' + '7c'.repeat(20)
   const meson = stubOutage({ walletSwaps: [swapRecord(swapId('4'), MOVING)] })
   meson.down = false
@@ -207,8 +207,11 @@ test('a wallet whose swap list Meson cannot read gets the wallet notice once —
   assert.deepEqual(texts(world.posted), [buildOutageNotice('wallet')])
   meson.walletDown = false
   await sleep(1500)
-  assert.equal(world.posted.length, 2)
+  // The list, then its swap's details embed and ⏳ — no second notice.
+  assert.equal(world.posted.length, 4)
   assert.ok(world.posted[1].embeds[0].data.title.startsWith('Unfinished Meson swaps for this wallet'))
+  assert.ok(world.posted[2].embeds[0].data.title.startsWith('Meson swap'))
+  assert.ok(world.posted[3].content.startsWith('⏳'))
 })
 
 test('the form\'s wallet gets the wallet notice too (accepted on the shared server), but its swap-shaped noise gets no notice', async () => {

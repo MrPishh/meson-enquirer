@@ -1,7 +1,7 @@
 /**
  * Restart recovery: rebuilds every open ticket from the bot's own messages in it, so a restart drops no follow-up.
  *
- * Ticket state is in memory only (ticket-state.js, watch.js), but Discord already holds what it described: each swap's details embed (its swap ID, in posting order = its "#n", and whether it shows limited details) and the ⏳ / 🔎 / ✅ / ↩️ replies to it, wallet embeds, ❓ replies and outage notices.
+ * Ticket state is in memory only (ticket-state.js, watch.js), but Discord already holds what it described: each swap's details embed (its swap ID, in posting order = its "#n", and whether it shows limited details) and the ⏳ / 🔎 / ✅ / ↩️ replies to it, wallet embeds (a numbered list also names the swaps it follows: its rows stay in step with them, and one it never got to post is posted now), ❓ replies and outage notices.
  * On startup each ticket channel's history is read, the ticket rebuilt, and every unfinished swap re-checked and followed again (watchSwap `resumed`: no second ⏳; a swap that finished while the bot was down gets its closing message now, and one that became stuck its 🔎).
  * Messages posted after the bot's last message — missed while it was down — are then handled as if they had just arrived (admitMessage).
  * Live messages for a ticket wait in its queue until its recovery is done, so none is handled against an empty ticket.
@@ -20,10 +20,10 @@
 
 import { config } from './config.js'
 import { getSwaps, SWAP_BATCH_SIZE } from './meson.js'
-import { readSwapEmbed, readWalletEmbed, readToldValues, followUpKind, outageNoticeKind } from './render.js'
+import { readSwapEmbed, readWalletEmbed, readWalletRows, readToldValues, followUpKind, outageNoticeKind } from './render.js'
 import { getTicket, forgetTicket, rememberSwap } from './ticket-state.js'
-import { watchSwap, syncFollowUps, stopWatchingChannel } from './watch.js'
-import { admitMessage, retryDelay, worthRetrying } from './tickets.js'
+import { watchSwap, syncFollowUps, syncWalletList, stopWatchingChannel } from './watch.js'
+import { admitMessage, postWalletRows, retryDelay, worthRetrying } from './tickets.js'
 import { canReply, CHANNEL_GONE } from './discord-util.js'
 
 // =============================================================================
@@ -125,6 +125,7 @@ async function recoverTicket (t, channel) {
   // The bot's own messages: details embeds (in posting order), wallet embeds, and follow-ups by the embed they reply to.
   const found = []
   const addresses = new Set()
+  let list = null // the wallet list whose swaps the ticket follows (numbered rows): { address, messages, swapIds, open } — `open` while its next part may still follow
   const followUps = new Map() // details message ID → { processing, support, outcome }
   let lastOwn = -1
   history.forEach((m, i) => {
@@ -135,6 +136,13 @@ async function recoverTicket (t, channel) {
     if (swap && !found.some((f) => f.swapId === swap.swapId)) found.push({ ...swap, message: m })
     const wallet = readWalletEmbed(m.embeds[0])
     if (wallet) addresses.add(wallet.toLowerCase())
+    // A list split over several messages is one list; only the first with rows is followed (it is posted before any swap, so a later one never is).
+    const rows = wallet ? readWalletRows(m.embeds[0]) : []
+    if (rows.length && (!list || (list.address === wallet.toLowerCase() && list.open))) {
+      list ??= { address: wallet.toLowerCase(), messages: [], swapIds: [], open: true }
+      list.messages.push(m)
+      list.swapIds.push(...rows)
+    } else if (list) list.open = false
     for (const value of readToldValues(m)) t.told.add(value.toLowerCase())
     // An outage notice already posted is not posted again if Meson is still down after the restart.
     const outage = outageNoticeKind(m.content)
@@ -148,12 +156,14 @@ async function recoverTicket (t, channel) {
   const missed = history.filter((m, i) => m.author.id !== me && (i > lastOwn || m.createdTimestamp >= STARTED_AT))
   // Before the early return: a ticket showing only a wallet list must not get that list again when the wallet is pasted after a restart.
   for (const a of addresses) t.addresses.add(a)
-  if (!found.length && !missed.length) return
+  if (!found.length && !missed.length && !list) return
 
-  // Re-check every swap, together (one request per SWAP_BATCH_SIZE); one Meson no longer knows is dropped (logged).
+  // Re-check every swap, together (one request per SWAP_BATCH_SIZE) — with the wallet list's swaps whose details embed was never posted (the bot stopped half-way); one Meson no longer knows is dropped (logged).
+  const unposted = (list?.swapIds ?? []).filter((id) => !found.some((f) => f.swapId === id))
+  const ids = [...found.map((f) => f.swapId), ...unposted]
   const latestById = new Map()
-  for (let i = 0; i < found.length; i += SWAP_BATCH_SIZE) {
-    for (const [id, view] of await getSwaps(found.slice(i, i + SWAP_BATCH_SIZE).map((f) => f.swapId))) latestById.set(id, view)
+  for (let i = 0; i < ids.length; i += SWAP_BATCH_SIZE) {
+    for (const [id, view] of await getSwaps(ids.slice(i, i + SWAP_BATCH_SIZE))) latestById.set(id, view)
   }
   const swaps = []
   for (const f of found) {
@@ -175,6 +185,11 @@ async function recoverTicket (t, channel) {
     processingOwed: f.limited && !followUps.get(f.message.id),
   }))
   for (const e of t.swaps) rememberSwap(t, e.latest)
+  // Row n of the list is swap #n; a row Meson no longer knows leaves the list as it was (syncWalletList needs every row).
+  if (list) {
+    const pending = new Map(unposted.filter((id) => latestById.has(id)).map((id) => [id, latestById.get(id)]))
+    t.wallet = { address: list.address, messages: list.messages, swapIds: list.swapIds, pending }
+  }
   // Other bots' messages already behind the bot's last reply count as read (Ticket Tool's form).
   t.botMessagesSeen = Math.max(t.botMessagesSeen, Math.min(config.scanLimit, handled.filter((m) => m.author.bot && m.author.id !== me).length))
 
@@ -182,6 +197,11 @@ async function recoverTicket (t, channel) {
   for (const e of t.swaps) await syncFollowUps(t, e)
   for (const e of t.swaps) {
     await watchSwap(t, e, { resumed: true }).catch((err) => console.error(`#${channel.name}: resuming ${e.swapId} failed —`, err.message))
+  }
+  // The wallet list: post the swaps it never got to (a failure is finished by the next message — handleTicketMessage), then its rows as they are now.
+  if (t.wallet) {
+    if (t.wallet.pending.size) await postWalletRows(t).catch((err) => console.error(`#${channel.name}: posting the wallet list's swaps failed —`, err.message))
+    await syncWalletList(t)
   }
 
   // Messages missed while down. Fetched messages carry no member, so load it for the staff check.
