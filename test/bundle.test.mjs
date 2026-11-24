@@ -61,3 +61,37 @@ test('bundling never adds a request: other swaps only fill the spare places of a
   await sleep(3200) // three rounds, in each only the fresh swap is due
   assert.ok(count.requests <= 4, `${count.requests} requests in three rounds — one per round expected, not two`)
 })
+
+test('a closed swap stays followed: if Meson changes its outcome, the embed is updated, the old closing message deleted and a fresh one posted', async () => {
+  const closed = swapId('d')
+  const moving = swapId('e')
+  const events = { [closed]: [{ name: 'CANCELLED', hash: '0xcc' }], [moving]: MOVING }
+  stubMeson({ events })
+  const ticket = makeWorld('b5')
+  await follow(ticket, closed)
+  const cancelled = ticket.channel.history.find((m) => m.content.startsWith('**↩️'))
+  assert.ok(cancelled, 'closed as cancelled')
+  // Another followed swap is due every round, so with bundling the closed one is checked along with it, not only every SWAP_WATCH_LONG_INTERVAL_MINUTES.
+  await follow(makeWorld('b6'), moving)
+  events[closed] = DONE // as on 2026-11-24: released after all
+  await sleep(2500)
+  const embed = getTicket('b5').swaps[0].message
+  assert.ok(embed.embeds[0].data.title.endsWith('Done'), 'the embed shows the new status')
+  assert.ok(cancelled.deleted, 'the old closing message is deleted, never rewritten')
+  assert.equal(ticket.channel.history.filter((m) => m.content.startsWith('**✅') && !m.deleted).length, 1, 'a fresh ✅ reply')
+})
+
+test('a completed swap is no longer checked, even when other swaps are', async () => {
+  const done = swapId('f')
+  const moving = swapId('9')
+  stubMeson({ events: { [done]: DONE, [moving]: MOVING } })
+  const meson = globalThis.fetch
+  const asked = []
+  globalThis.fetch = async (url) => { asked.push(String(url)); return meson(url) }
+  await follow(makeWorld('b7'), done)
+  await follow(makeWorld('b8'), moving)
+  asked.length = 0
+  await sleep(2500) // two rounds for the moving swap; with bundling a watched swap would come along
+  assert.ok(asked.some((u) => u.includes(moving)), 'the moving swap is checked')
+  assert.ok(!asked.some((u) => u.includes(done)), 'the completed one is not')
+})

@@ -211,5 +211,5 @@ async function recoverTicket (t, channel) {
   }
 
   const open = t.swaps.filter((e) => !e.outcome).length
-  console.log(`#${channel.name}: recovered ${t.swaps.length} swap(s) after restart, ${open} still followed, ${missed.length} missed message(s) queued`)
+  console.log(`#${channel.name}: recovered ${t.swaps.length} swap(s) after restart, ${open} unfinished, ${missed.length} missed message(s) queued`)
 }

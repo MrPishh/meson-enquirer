@@ -84,7 +84,7 @@ export const config = {
   watchSlowerIntervalMs: number('SWAP_WATCH_SLOWER_INTERVAL_SECONDS') * 1000,
   watchSlowestAfterMs: number('SWAP_WATCH_SLOWEST_AFTER_MINUTES') * 60 * 1000,
   watchSlowestIntervalMs: number('SWAP_WATCH_SLOWEST_INTERVAL_SECONDS') * 1000,
-  // Once a swap is this old (since it was requested), it is checked only every SWAP_WATCH_LONG_INTERVAL_MINUTES — until it finishes or its ticket is closed; it is never dropped.
+  // Once a swap is this old (since it was requested), it is checked only every SWAP_WATCH_LONG_INTERVAL_MINUTES — until it completes or its ticket is closed (a cancelled one too, in case Meson releases it after all); it is never dropped.
   watchLongAfterMs: number('SWAP_WATCH_LONG_AFTER_HOURS') * 60 * 60 * 1000,
   watchLongIntervalMs: number('SWAP_WATCH_LONG_INTERVAL_MINUTES') * 60 * 1000,
   // true = whenever a check round asks Meson about the swaps that are due, the other watched swaps come along in the spare places of that request (up to 20 per request), so every followed swap is checked together; false = each swap only at its own interval.
