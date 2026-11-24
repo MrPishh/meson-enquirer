@@ -31,7 +31,7 @@
 | `src/render.js` | 474 | Shared helpers (55) · Swap details embed (85) · Plain-text messages (208) · Wallet embeds (286) · Not-found embed (407) · Recognising our own messages (427) | Everything the bot posts: swap details embed, wallet (unfinished swaps) embeds, the plain-text ⏳ / 🔎 / closing / "couldn't find" / outage messages, and the … |
 | `src/ticket-state.js` | 89 | State (39) · Helpers (67) | Per-ticket memory. |
 | `src/tickets.js` | 298 | Entry point (34) · Message handling (99) · Posting (177) | Ticket auto-reply: reads Ticket Tool's form embed and the user's later messages, and posts each new swap they name (then hands it to watchSwap). |
-| `src/watch.js` | 383 | Polling (47) · Watch lifecycle (260) | Keeps a posted swap current until it finishes. |
+| `src/watch.js` | 391 | Polling (47) · Watch lifecycle (268) | Keeps a posted swap current until it finishes. |
 | `scripts/build-index.mjs` | 424 | Parsing (61) · Contents block (148) · Markdown Contents block (181) · CODE_INDEX.md (222) · Main (340) | Keeps the code's navigation aids line-accurate: the "Contents" block at the top of every source file, the heading Contents block of every long doc (README.md… |
 | `scripts/check-explorer.mjs` | 22 | — | `npm run check-explorer` — check from the terminal whether the Meson explorer's status function still matches our port (`explorerStatus` in src/meson.js), th… |
 | `scripts/doc-checks.mjs` | 303 | Reading the docs (33) · Checks (132) | Doc-drift checks run by `npm run index` (scripts/build-index.mjs): the hand-written docs must point to things that exist, in the places they say. |
@@ -41,7 +41,7 @@
 | `scripts/refresh-presets.mjs` | 28 | Writing presets.json (15) | Rebuilds src/presets.json, the bot's starting chain and token table, from the live Meson Explorer bundle. |
 | `scripts/register-commands.mjs` | 21 | — | Registers the bot's slash commands (defined in src/commands.js). |
 | `scripts/stop-hook.mjs` | 78 | Working-tree fingerprint (21) · Hook (44) | Claude Code Stop hook (.claude/settings.json): when Claude is about to finish a turn, rebuild the index and run `build-index.mjs --check`; if docs or index h… |
-| `test/bot.test.mjs` | 743 | Helpers (35) · A failed post never ends a follow-up (54) · Restart recovery (103) · Status reason and support reply (179) · A bad record from Meson (363) · Values whose shape does not say what they are (392) · Swaps found through a wallet (633) | The bot's behaviour under failure and its status replies, each test fake-driven (see helpers.mjs); most were written for a fault found in the codebase audits… |
+| `test/bot.test.mjs` | 761 | Helpers (35) · A failed post never ends a follow-up (54) · Restart recovery (121) · Status reason and support reply (197) · A bad record from Meson (381) · Values whose shape does not say what they are (410) · Swaps found through a wallet (651) | The bot's behaviour under failure and its status replies, each test fake-driven (see helpers.mjs); most were written for a fault found in the codebase audits… |
 | `test/bundle.test.mjs` | 64 | Helpers (19) · Followed swaps are checked together (33) | Checking every followed swap together (SWAP_WATCH_BUNDLE=true): an old swap, normally checked only every SWAP_WATCH_LONG_INTERVAL_MINUTES, comes along in the… |
 | `test/helpers.mjs` | 143 | Settings (23) · Fake Meson (41) · Fake Discord (95) | Shared by the tests: fake settings (the real `.env` and token are never used) and small fake Discord and Meson stand-ins, so nothing here contacts a real ser… |
 | `test/no-bundle.test.mjs` | 40 | — | With SWAP_WATCH_BUNDLE=false each swap is checked only at its own interval, as before bundling. |
@@ -303,16 +303,16 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | `pickForRound` | Polling | `src/watch.js:95` | The watched swaps to check in a round starting at `now`: every one that is due, and with SWAP_WATCH_BUNDLE the others as well, soonest due first, as far as t… |
 | `runRound` | Polling | `src/watch.js:118` | One check round: every watched swap that is due (with SWAP_WATCH_BUNDLE, every watched swap that fits — pickForRound) is re-checked together — one Meson requ… |
 | `applyCheck` | Polling | `src/watch.js:150` | Act on one fresh look at a watched swap: edit the embed if it changed, post the closing message and stop once it is finished. |
-| `postClosing` | Polling | `src/watch.js:188` | Post a swap's closing message and take down its ⏳ and 🔎. |
-| `postProcessing` | Polling | `src/watch.js:202` | Post a swap's ⏳ "being processed" reply. |
-| `withdrawProcessing` | Polling | `src/watch.js:211` | Remove a swap's ⏳ when it cannot be turned into the 🔎 (syncSupport): one is already up, or following is switched off and nothing would ever update it. |
-| `syncSupport` | Polling | `src/watch.js:222` | Bring a swap's status reply in line with its status: the ⏳ is edited into the 🔎 while the support team has to step in (silent, like every edit), reworded if… |
-| `stopWatch` | Polling | `src/watch.js:255` | End one watch (logged). |
-| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:265` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
-| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:274` | Bring a swap's ⏳, 🔎 and closing message in line with the ticket as it is now: its "Swap #n", the 🔎's reason, and whether "ticket will be closed soon" still… |
-| `syncWalletList` `export` | Watch lifecycle | `src/watch.js:297` | Bring the ticket's wallet list (Ticket.wallet) in line with its swaps' latest statuses — "1) 🟢 Done", "Unfinished … 1 of 2" — editing (silently) only an emb… |
-| `watchSwap` `export` | Watch lifecycle | `src/watch.js:321` | Follow a just-posted swap: post its closing note if it is already finished; otherwise post its ⏳ (if it is moving normally) or 🔎 (if the support team has to… |
-| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:378` | Cancel every watch in a channel — called when a ticket channel is deleted. |
+| `postClosing` | Polling | `src/watch.js:196` | Post a swap's closing message and take down its ⏳ and 🔎. |
+| `postProcessing` | Polling | `src/watch.js:210` | Post a swap's ⏳ "being processed" reply. |
+| `withdrawProcessing` | Polling | `src/watch.js:219` | Remove a swap's ⏳ when it cannot be turned into the 🔎 (syncSupport): one is already up, or following is switched off and nothing would ever update it. |
+| `syncSupport` | Polling | `src/watch.js:230` | Bring a swap's status reply in line with its status: the ⏳ is edited into the 🔎 while the support team has to step in (silent, like every edit), reworded if… |
+| `stopWatch` | Polling | `src/watch.js:263` | End one watch (logged). |
+| `detailsEmbed` `export` | Watch lifecycle | `src/watch.js:273` | The details embed for a ticket's swap entry, with its "#n" if there are several. |
+| `syncFollowUps` `export` | Watch lifecycle | `src/watch.js:282` | Bring a swap's ⏳, 🔎 and closing message in line with the ticket as it is now: its "Swap #n", the 🔎's reason, and whether "ticket will be closed soon" still… |
+| `syncWalletList` `export` | Watch lifecycle | `src/watch.js:305` | Bring the ticket's wallet list (Ticket.wallet) in line with its swaps' latest statuses — "1) 🟢 Done", "Unfinished … 1 of 2" — editing (silently) only an emb… |
+| `watchSwap` `export` | Watch lifecycle | `src/watch.js:329` | Follow a just-posted swap: post its closing note if it is already finished; otherwise post its ⏳ (if it is moving normally) or 🔎 (if the support team has to… |
+| `stopWatchingChannel` `export` | Watch lifecycle | `src/watch.js:386` | Cancel every watch in a channel — called when a ticket channel is deleted. |
 
 ### scripts/build-index.mjs
 
@@ -382,11 +382,11 @@ Parsed once in `src/config.js`; read everywhere else as `config.<key>`. Every on
 | --- | --- | --- | --- |
 | `closings` | Helpers | `test/bot.test.mjs:43` | The closing messages among what the bot posted. |
 | `follow` | Helpers | `test/bot.test.mjs:46` | Start following one swap whose details embed is `embed`. |
-| `ticketWithTwoSwaps` | Restart recovery | `test/bot.test.mjs:120` | A ticket whose two swaps were posted before a restart: two details embeds, each with its ⏳. |
-| `supports` | Status reason and support reply | `test/bot.test.mjs:190` | The 🔎 replies among what the bot posted. |
-| `restartable` | Values whose shape does not say what they are | `test/bot.test.mjs:487` | Make a world's history read as it does from Discord (embed fields readable, messages older than this process), so a test can restart the bot on it: forget th… |
-| `walletList` | Swaps found through a wallet | `test/bot.test.mjs:638` | The ticket's wallet list message, as it stands now. |
-| `detailsMessages` | Swaps found through a wallet | `test/bot.test.mjs:641` | The ticket's details-embed messages, in posting order. |
+| `ticketWithTwoSwaps` | Restart recovery | `test/bot.test.mjs:138` | A ticket whose two swaps were posted before a restart: two details embeds, each with its ⏳. |
+| `supports` | Status reason and support reply | `test/bot.test.mjs:208` | The 🔎 replies among what the bot posted. |
+| `restartable` | Values whose shape does not say what they are | `test/bot.test.mjs:505` | Make a world's history read as it does from Discord (embed fields readable, messages older than this process), so a test can restart the bot on it: forget th… |
+| `walletList` | Swaps found through a wallet | `test/bot.test.mjs:656` | The ticket's wallet list message, as it stands now. |
+| `detailsMessages` | Swaps found through a wallet | `test/bot.test.mjs:659` | The ticket's details-embed messages, in posting order. |
 
 ### test/bundle.test.mjs
 

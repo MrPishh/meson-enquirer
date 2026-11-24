@@ -25,17 +25,17 @@
 // L95     pickForRound()
 // L118    runRound()
 // L150    applyCheck()
-// L188    postClosing()
-// L202    postProcessing()
-// L211    withdrawProcessing()
-// L222    syncSupport()
-// L255    stopWatch()
-// L260  Watch lifecycle
-// L265    detailsEmbed()
-// L274    syncFollowUps()
-// L297    syncWalletList()
-// L321    watchSwap()
-// L378    stopWatchingChannel()
+// L196    postClosing()
+// L210    postProcessing()
+// L219    withdrawProcessing()
+// L230    syncSupport()
+// L263    stopWatch()
+// L268  Watch lifecycle
+// L273    detailsEmbed()
+// L282    syncFollowUps()
+// L305    syncWalletList()
+// L329    watchSwap()
+// L386    stopWatchingChannel()
 // ----- end of contents -----
 
 import { config } from './config.js'
@@ -154,11 +154,19 @@ async function applyCheck (w, latest) {
     rememberSwap(t, latest) // the release hash only appears later
     const next = fingerprint(latest)
     if (next !== w.last) {
-      w.last = next
-      // Staff may have deleted the details message — not a reason to stop. But a ticket that is gone is: its delete event may have been missed during a disconnect.
-      await entry.message.edit({ embeds: [detailsEmbed(t, entry, 'auto-detected from this ticket · auto-updated')] })
-        .catch((err) => { if (CHANNEL_GONE.has(err.code)) throw err })
-      console.log(`#${channel.name}: ${entry.swapId} is now ${latest.status.label} — updated details`)
+      // Remembered as shown only once the edit worked, so a failed one (Discord hiccup) is tried again at the next check — or the embed could show an old status next to a newer closing message.
+      // Discord refusing it (staff deleted the details message, lost permissions) is not retried: repeating would only repeat the refusal. Nor is it a reason to stop. But a ticket that is gone is: its delete event may have been missed during a disconnect.
+      let retry = false
+      const result = await entry.message.edit({ embeds: [detailsEmbed(t, entry, 'auto-detected from this ticket · auto-updated')] })
+        .then(() => 'updated details', (err) => {
+          if (CHANNEL_GONE.has(err.code)) throw err
+          retry = !discordRefused(err)
+          return `details not updated, ${retry ? 'will try again' : 'Discord refused'} (${err.message})`
+        })
+      if (!retry) w.last = next
+      console.log(`#${channel.name}: ${entry.swapId} is now ${latest.status.label} — ${result}`)
+      // The embed first, then what follows from it: a closing message (which ends the watch) must not go up while the embed still shows the old status.
+      if (retry) return
     }
     const done = buildOutcomeMessage(latest, outcomeOpts(t, entry))
     if (done) {

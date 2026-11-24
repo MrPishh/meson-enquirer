@@ -7,16 +7,16 @@
 // L43     closings()
 // L46     follow()
 // L54   A failed post never ends a follow-up
-// L103  Restart recovery
-// L120    ticketWithTwoSwaps()
-// L179  Status reason and support reply
-// L190    supports()
-// L363  A bad record from Meson
-// L392  Values whose shape does not say what they are
-// L487    restartable()
-// L633  Swaps found through a wallet
-// L638    walletList()
-// L641    detailsMessages()
+// L121  Restart recovery
+// L138    ticketWithTwoSwaps()
+// L197  Status reason and support reply
+// L208    supports()
+// L381  A bad record from Meson
+// L410  Values whose shape does not say what they are
+// L505    restartable()
+// L651  Swaps found through a wallet
+// L656    walletList()
+// L659    detailsMessages()
 // ----- end of contents -----
 
 import test, { afterEach } from 'node:test'
@@ -98,6 +98,24 @@ test('a refused post is not repeated on every check', async () => {
   await sleep(4500)
   assert.equal(refused, 1)
   stopWatchingChannel('c3')
+})
+
+test('a failed details edit is tried again, and the closing message waits for it', async () => {
+  const id = swapId('d')
+  const events = { [id]: MOVING }
+  stubMeson({ events })
+  const world = makeWorld('c21')
+  const embed = world.message(1, world.me)
+  const edit = embed.edit
+  let failures = 1
+  embed.edit = async (payload) => { if (failures-- > 0) throw new Error('Discord 500'); return edit(payload) }
+  await follow(world, embed, id)
+  events[id] = DONE
+  await sleep(1500) // the first check: its edit fails
+  assert.equal(closings(world.posted).length, 0, 'no closing message while the embed still shows the old status')
+  await sleep(1500) // the next check: the edit works, then the closing message
+  assert.ok(embed.embeds[0].data.title.includes('Done'))
+  assert.equal(closings(world.posted).length, 1)
 })
 
 // =============================================================================
